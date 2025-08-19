@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Rubric Update Hook",
+  "description": "Automatically parses and updates the evaluation rubric when the steering prompts.md file is modified, converting markdown format to structured JSON configuration",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      ".kiro/steering/prompts.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A rubric configuration file has been updated at .kiro/steering/prompts.md. Parse the markdown content to extract rubric dimensions and their scoring ranges (format: \"- DimensionName: min–max\"), then convert to structured JSON format with min/max values for each dimension. Write the parsed schema to data/config/rubric.json with pretty formatting. If parsing fails, create data/config/rubric.error.json with error details and timestamp. Log the update with dimension names or any parsing errors. Handle the KIRO_STATIC_RUBRIC environment flag to bypass updates when set to true."
+  }
+}

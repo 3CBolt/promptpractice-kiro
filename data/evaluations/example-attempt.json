@@ -1,0 +1,20 @@
+{
+  "id": "eval-example-attempt",
+  "attemptId": "example-attempt",
+  "perModelResults": [
+    {
+      "modelId": "llama3.1-8b",
+      "text": "In a small workshop filled with canvases and brushes, a robot named Artie discovered the magic of colors. With each stroke, Artie learned that painting wasn't just about precision—it was about expressing the beauty found in imperfection.",
+      "latencyMs": 1250,
+      "usageTokens": 45,
+      "source": "hosted",
+      "score": 8,
+      "breakdown": {
+        "clarity": 4,
+        "completeness": 4
+      },
+      "notes": "Good creative response with clear narrative structure. Could benefit from more descriptive details."
+    }
+  ],
+  "createdAt": "2025-01-19T17:53:05.000Z"
+}

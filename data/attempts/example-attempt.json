@@ -1,0 +1,9 @@
+{
+  "id": "example-attempt",
+  "labId": "practice-basics",
+  "userPrompt": "Write a short story about a robot learning to paint.",
+  "models": [
+    "llama3.1-8b"
+  ],
+  "createdAt": "2025-01-19T17:53:00.000Z"
+}

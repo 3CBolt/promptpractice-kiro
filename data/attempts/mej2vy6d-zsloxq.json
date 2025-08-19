@@ -1,0 +1,9 @@
+{
+  "id": "mej2vy6d-zsloxq",
+  "labId": "compare-basics",
+  "userPrompt": "Test 2",
+  "models": [
+    "mistral-7b"
+  ],
+  "createdAt": "2025-08-19T21:51:10.021Z"
+}

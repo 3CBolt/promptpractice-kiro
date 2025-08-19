@@ -1,0 +1,19 @@
+{
+  "id": "mej2vy79-nd38wy",
+  "attemptId": "test-attempt-id",
+  "perModelResults": [
+    {
+      "modelId": "llama3.1-8b",
+      "text": "Test response",
+      "latencyMs": 1500,
+      "source": "hosted",
+      "score": 8,
+      "breakdown": {
+        "clarity": 4,
+        "completeness": 4
+      },
+      "notes": "Good response"
+    }
+  ],
+  "createdAt": "2025-08-19T21:51:10.053Z"
+}

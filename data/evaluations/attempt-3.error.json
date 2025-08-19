@@ -1,0 +1,6 @@
+{
+  "attemptId": "attempt-3",
+  "error": "Test error",
+  "timestamp": "2025-08-19T21:51:10.073Z",
+  "stack": "Error: Test error\n    at /Users/cameronbolton/Desktop/promptpractice-kiro/lib/__tests__/storage.test.ts:160:47\n    at file:///Users/cameronbolton/Desktop/promptpractice-kiro/node_modules/@vitest/runner/dist/chunk-hooks.js:752:20"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "mej2vy66-8i3f6x",
+  "labId": "practice-basics",
+  "userPrompt": "Test prompt",
+  "models": [
+    "llama3.1-8b"
+  ],
+  "createdAt": "2025-08-19T21:51:10.014Z"
+}

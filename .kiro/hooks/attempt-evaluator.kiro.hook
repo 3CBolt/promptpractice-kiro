@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Attempt Evaluator",
+  "description": "Validates new attempt files against schema, calls the /api/compare endpoint with retry logic, and writes evaluation results or error files",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "data/attempts/*.json"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A new attempt file has been created at {filePath}. Please:\n\n1. Validate the JSON against the Attempt schema\n2. If valid, extract userPrompt, systemPrompt (optional), and models[] from the attempt\n3. Call POST /api/compare with the extracted data: { userPrompt, systemPrompt?, models[] }\n4. Implement retry logic: up to 3 attempts with exponential backoff for network errors or 429 status codes\n5. On success: write results to data/evaluations/{attemptId}.json in pretty JSON format (2-space indent)\n6. On validation failure or permanent API error: write data/evaluations/{attemptId}.error.json with { message, code, time }\n7. Log the following: attemptId, labId, models used, latency per model, and final status\n8. Skip processing if data/evaluations/{attemptId}.json already exists\n\nExtract attemptId from the filename (remove .json extension). Ensure all file operations use proper error handling and the evaluation files are written atomically."
+  }
+}
