@@ -281,4 +281,4 @@ NEXT_PUBLIC_ENABLE_HOSTED_MODELS=true
 - **Static generation**: Pre-generate guide pages
 - **API rate limiting**: Implement proper rate limiting
 - **Monitoring**: Track API usage and errors
-- **Caching**: Implement response caching for performance
+- **Caching**: Implement r
