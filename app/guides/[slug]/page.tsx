@@ -79,4 +79,6 @@ export async function generateStaticParams() {
   const { GUIDE_SLUGS } = await import('@/lib/guides');
   
   return GUIDE_SLUGS.map((slug) => ({
-    slug
+    slug,
+  }));
+}
