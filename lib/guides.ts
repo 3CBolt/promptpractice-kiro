@@ -1,8 +1,8 @@
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { marked } from 'marked';
-import DOMPurify from 'isomorphic-dompurify';
 import { Guide } from '@/types';
+import { sanitizeMarkdown } from './validation';
 
 // Available guide slugs in order
 export const GUIDE_SLUGS = [
@@ -28,8 +28,8 @@ export async function loadGuide(slug: string): Promise<Guide | null> {
     // Parse markdown to HTML
     const rawHtml = await marked(content);
     
-    // Sanitize HTML with DOMPurify
-    const body = DOMPurify.sanitize(rawHtml);
+    // Sanitize HTML with our centralized sanitization
+    const body = sanitizeMarkdown(rawHtml);
     
     return {
       id: slug,

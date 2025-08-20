@@ -53,14 +53,14 @@
   - Add visual distinction between learning (📚) and practice (🧪) sections
   - _Requirements: 1.1, 2.1_
 
-- [ ] 8. Implement guide pages with markdown rendering
+- [x] 8. Implement guide pages with markdown rendering
   - Create `/guides/[slug]` dynamic route for guide display
   - Implement markdown parsing and rendering with DOMPurify sanitization
   - Add navigation between guides and back to home
   - Create guide content loading from filesystem
   - _Requirements: 1.2, 1.3_
 
-- [ ] 9. Build Practice Lab interface and functionality
+- [x] 9. Build Practice Lab interface and functionality
   - Create `/labs/practice-basics` page with lab interface
   - Implement user prompt textarea and single model selection
   - Add Run button that creates attempt file and triggers evaluation
@@ -68,7 +68,7 @@
   - Add loading states and error handling with standardized error messages
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 10. Build Compare Lab interface and functionality
+- [x] 10. Build Compare Lab interface and functionality
   - Create `/labs/compare-basics` page with multi-model interface
   - Implement user prompt textarea and multi-model selection (2-3 models)
   - Add Run button that creates attempt file for multiple models
@@ -76,7 +76,7 @@
   - Add model source badges and comparison metrics
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 11. Create System Prompt Lab placeholder
+- [x] 11. Create System Prompt Lab placeholder
   - Create `/labs/system-prompt-lab` page with placeholder interface
   - Add System Prompt textarea (visible by default) with clear "Stretch – Placeholder" labeling
   - Set `isPlaceholder: true` in lab configuration for clear code/UI distinction
@@ -84,14 +84,16 @@
   - Add roadmap information about planned features
   - _Requirements: 8.1, 8.2, 8.3_
 
-- [ ] 12. Implement reusable UI components
+
+
+- [x] 12. Implement reusable UI components
   - Create ModelPicker component with source badges and selection limits
   - Build ResultsCards component with single and side-by-side layouts
   - Implement ScoreBadge component with tooltips and breakdown display
   - Add loading spinners, error banners, and status indicators
   - _Requirements: 3.1, 4.1, 6.3_
 
-- [ ] 13. Add comprehensive error handling and user feedback
+- [x] 13. Add comprehensive error handling and user feedback
   - Implement standardized error UI with inline cards and dismissible banners
   - Add rate limiting detection and friendly error messages
   - Create offline mode indicators and fallback explanations
@@ -100,7 +102,7 @@
   - Surface hook execution status in UI via polling: Evaluating / Complete / Failed / Timeout
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 14. Create Kiro configuration files
+- [x] 14. Create Kiro configuration files
   - Write `.kiro/specs/prompt-practice.yaml` with SubmitAttempt flow definition
   - Create `.kiro/steering/prompts.md` with evaluator tone and rubric guidelines
   - Add schema validation for Attempt and Evaluation data structures
@@ -108,7 +110,7 @@
   - Document hook trigger conditions and error handling
   - _Requirements: 7.1, 7.2, 7.3_
 
-- [ ] 15. Implement development bypass and testing utilities
+- [x] 15. Implement development bypass and testing utilities
   - Add `KIRO_BYPASS_HOOK` environment variable support
   - Create `/api/attempts` endpoint that mirrors hook behavior exactly (inline call to `/api/compare` + file writes)
   - Ensure bypass mode writes identical file structures to hook mode
@@ -116,7 +118,7 @@
   - Add development utilities for testing hook functionality and file artifact validation
   - _Requirements: 7.1, 7.2, 7.4_
 
-- [ ] 16. Add input validation and security measures
+- [x] 16. Add input validation and security measures
   - Implement schema validation for all JSON inputs with strict type checking
   - Add path traversal guards for all file operations (prevent ../../../ attacks)
   - Implement prompt sanitization before disk writes (strip dangerous characters)
@@ -126,14 +128,14 @@
   - Add model selection validation (1 for Practice, 2-3 for Compare)
   - _Requirements: 3.1, 4.1, 5.1, 5.2_
 
-- [ ] 17. Write comprehensive tests for core functionality
+- [x] 17. Write comprehensive tests for core functionality
   - Create unit tests for model providers, evaluator, and utility functions
   - Add integration tests for API endpoints and file operations
   - Implement tests for Kiro hook execution and error handling
   - Add tests for rate limit simulation and model source badge rendering
   - _Requirements: 5.1, 6.1, 7.1, 7.2_
 
-- [ ] 18. Polish UI and add final touches
+- [x] 18. Polish UI and add final touches
   - Implement responsive design for mobile and desktop
   - Add proper loading states and smooth transitions
   - Create consistent styling and component theming

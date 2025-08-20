@@ -1,0 +1,347 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Prompt Practice App Data Schemas",
+  "description": "JSON schemas that match TypeScript interfaces exactly to prevent drift",
+  
+  "definitions": {
+    "AttemptSchema": {
+      "type": "object",
+      "title": "Attempt",
+      "description": "User prompt submission for evaluation",
+      "required": ["id", "labId", "userPrompt", "models", "createdAt"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-_]+$",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Unique identifier for the attempt"
+        },
+        "labId": {
+          "type": "string",
+          "enum": ["practice-basics", "compare-basics", "system-prompt-lab"],
+          "description": "Lab type identifier"
+        },
+        "systemPrompt": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Optional system prompt (for system-prompt-lab)"
+        },
+        "userPrompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "description": "User's prompt to be evaluated"
+        },
+        "models": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9.-]+$",
+            "description": "Model identifier"
+          },
+          "description": "Array of model IDs to test against"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp when attempt was created"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ModelResultSchema": {
+      "type": "object",
+      "title": "ModelResult",
+      "description": "Result from a single model inference",
+      "required": ["modelId", "text", "latencyMs", "source"],
+      "properties": {
+        "modelId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9.-]+$",
+          "description": "Model identifier"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000,
+          "description": "Model response text"
+        },
+        "latencyMs": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 60000,
+          "description": "Response time in milliseconds"
+        },
+        "usageTokens": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Number of tokens used (optional)"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["hosted", "sample", "local"],
+          "description": "Model source type for badge display"
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Total evaluation score (optional)"
+        },
+        "breakdown": {
+          "type": "object",
+          "description": "Score breakdown by metric (optional)",
+          "required": ["clarity", "completeness"],
+          "properties": {
+            "clarity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5,
+              "description": "Clarity score (0-5)"
+            },
+            "completeness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5,
+              "description": "Completeness score (0-5)"
+            }
+          },
+          "additionalProperties": false
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Evaluation feedback and improvement suggestions (optional)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "EvaluationSchema": {
+      "type": "object",
+      "title": "Evaluation",
+      "description": "Complete evaluation results for an attempt",
+      "required": ["id", "attemptId", "perModelResults", "createdAt"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-_]+$",
+          "description": "Unique identifier for the evaluation"
+        },
+        "attemptId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-_]+$",
+          "description": "Reference to the original attempt"
+        },
+        "perModelResults": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/definitions/ModelResultSchema"
+          },
+          "description": "Results from each model with evaluation scores"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp when evaluation was completed"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ModelProviderSchema": {
+      "type": "object",
+      "title": "ModelProvider",
+      "description": "Model provider configuration",
+      "required": ["id", "name", "source", "maxTokens"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9.-]+$",
+          "description": "Unique model identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Human-readable model name"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["hosted", "sample", "local"],
+          "description": "Model source type"
+        },
+        "maxTokens": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 2048,
+          "description": "Maximum tokens per request"
+        },
+        "isPlaceholder": {
+          "type": "boolean",
+          "description": "Whether this is a placeholder model (optional)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "GuideSchema": {
+      "type": "object",
+      "title": "Guide",
+      "description": "Educational guide content",
+      "required": ["id", "title", "body"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-_]+$",
+          "description": "Unique guide identifier"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Guide title"
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Guide content in markdown"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["title", "url"],
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Optional related links"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "LabSchema": {
+      "type": "object",
+      "title": "Lab",
+      "description": "Interactive lab configuration",
+      "required": ["id", "type", "title", "instructions"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-_]+$",
+          "description": "Unique lab identifier"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["practice", "compare", "system"],
+          "description": "Lab type"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Lab title"
+        },
+        "instructions": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Lab instructions"
+        },
+        "linkedGuideSlug": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-_]+$",
+          "description": "Optional linked guide identifier"
+        },
+        "isPlaceholder": {
+          "type": "boolean",
+          "description": "Whether this is a placeholder lab"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "EvaluationErrorSchema": {
+      "type": "object",
+      "title": "EvaluationError",
+      "description": "Error information when evaluation fails",
+      "required": ["attemptId", "error", "code", "timestamp"],
+      "properties": {
+        "attemptId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-_]+$",
+          "description": "Reference to the failed attempt"
+        },
+        "error": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "description": "Error message"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Error code or HTTP status"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the error occurred"
+        },
+        "retryCount": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Number of retry attempts made"
+        },
+        "originalAttempt": {
+          "$ref": "#/definitions/AttemptSchema",
+          "description": "Original attempt data for debugging"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "schemas": {
+    "Attempt": {
+      "$ref": "#/definitions/AttemptSchema"
+    },
+    "ModelResult": {
+      "$ref": "#/definitions/ModelResultSchema"
+    },
+    "Evaluation": {
+      "$ref": "#/definitions/EvaluationSchema"
+    },
+    "ModelProvider": {
+      "$ref": "#/definitions/ModelProviderSchema"
+    },
+    "Guide": {
+      "$ref": "#/definitions/GuideSchema"
+    },
+    "Lab": {
+      "$ref": "#/definitions/LabSchema"
+    },
+    "EvaluationError": {
+      "$ref": "#/definitions/EvaluationErrorSchema"
+    }
+  }
+}

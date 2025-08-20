@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callModel } from '@/lib/models/providers';
 import { evaluateResponse } from '@/lib/evaluator';
 import { ModelResult } from '@/types';
+import { 
+  CompareRequestSchema, 
+  sanitizePrompt, 
+  sanitizeSystemPrompt,
+  validateModelSelection,
+  detectPromptInjection 
+} from '@/lib/validation';
 
 export interface CompareRequest {
   userPrompt: string;
@@ -28,42 +35,49 @@ export interface CompareResponse {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Parse and validate request body
-    const body: CompareRequest = await request.json();
+    // Parse request body
+    const rawBody = await request.json();
     
-    if (!body.userPrompt || typeof body.userPrompt !== 'string') {
+    // Validate with Zod schema
+    const validationResult = CompareRequestSchema.safeParse(rawBody);
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
       return NextResponse.json(
-        { error: 'userPrompt is required and must be a string' },
+        { error: 'Invalid request data', details: errors },
         { status: 400 }
       );
     }
     
-    if (!body.models || !Array.isArray(body.models) || body.models.length === 0) {
+    const body = validationResult.data;
+    
+    // Additional model selection validation (not covered by schema)
+    const modelValidation = validateModelSelection('compare-basics', body.models);
+    if (!modelValidation.isValid) {
       return NextResponse.json(
-        { error: 'models array is required and must contain at least one model' },
+        { error: modelValidation.error },
         { status: 400 }
       );
     }
     
-    // Validate prompt length (max 2000 characters as per security requirements)
-    if (body.userPrompt.length > 2000) {
-      return NextResponse.json(
-        { error: 'userPrompt exceeds maximum length of 2000 characters' },
-        { status: 400 }
-      );
+    // Sanitize prompts
+    const sanitizedUserPrompt = sanitizePrompt(body.userPrompt);
+    const sanitizedSystemPrompt = body.systemPrompt ? sanitizeSystemPrompt(body.systemPrompt) : undefined;
+    
+    // Check for prompt injection patterns
+    const injectionCheck = detectPromptInjection(sanitizedUserPrompt);
+    if (injectionCheck.isDetected) {
+      console.warn('Potential prompt injection detected in compare request:', {
+        patterns: injectionCheck.patterns,
+        userAgent: request.headers.get('user-agent'),
+        ip: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+      // Continue processing but log the attempt
     }
     
-    if (body.systemPrompt && body.systemPrompt.length > 2000) {
+    // Validate sanitized prompts aren't empty after sanitization
+    if (!sanitizedUserPrompt.trim()) {
       return NextResponse.json(
-        { error: 'systemPrompt exceeds maximum length of 2000 characters' },
-        { status: 400 }
-      );
-    }
-    
-    // Validate model selection limits
-    if (body.models.length > 3) {
-      return NextResponse.json(
-        { error: 'Maximum of 3 models allowed per request' },
+        { error: 'User prompt is empty after sanitization' },
         { status: 400 }
       );
     }
@@ -74,16 +88,16 @@ export async function POST(request: NextRequest) {
     // Process each model in parallel
     const modelPromises = body.models.map(async (modelId) => {
       try {
-        // Call the model
-        const modelResult = await callModel(modelId, body.userPrompt, body.systemPrompt);
+        // Call the model with sanitized prompts
+        const modelResult = await callModel(modelId, sanitizedUserPrompt, sanitizedSystemPrompt);
         
         // Track if fallback was used (source changed from hosted to sample)
         if (modelResult.source === 'sample' && modelId.includes('llama') || modelId.includes('mistral')) {
           fallbacksUsed.push(modelId);
         }
         
-        // Evaluate the response
-        const evaluation = evaluateResponse(body.userPrompt, modelResult);
+        // Evaluate the response using sanitized prompt
+        const evaluation = evaluateResponse(sanitizedUserPrompt, modelResult);
         
         return {
           ...modelResult,
@@ -127,14 +141,36 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error in /api/compare:', error);
     
-    // Return standardized error response
+    // Return standardized error response with better error classification
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorCode = (error as any)?.code || 'INTERNAL_ERROR';
+    
+    let statusCode = 500;
+    let userMessage = 'Failed to process comparison request';
+    
+    // Classify error types for better user experience
+    if (errorCode === 'RATE_LIMITED') {
+      statusCode = 429;
+      userMessage = 'Rate limit exceeded. Please try again later or use sample mode.';
+    } else if (errorCode === 'NETWORK_ERROR') {
+      statusCode = 503;
+      userMessage = 'Network connection failed. Please check your connection and try again.';
+    } else if (errorCode === 'API_ERROR') {
+      statusCode = 502;
+      userMessage = 'External API service is temporarily unavailable. Please try again later.';
+    } else if (errorCode === 'NO_API_KEY') {
+      statusCode = 503;
+      userMessage = 'API service not configured. Using sample responses.';
+    }
+
     return NextResponse.json(
       {
-        error: 'Internal server error',
-        message: 'Failed to process comparison request',
-        fallback: 'Please try again or use fewer models'
+        error: userMessage,
+        code: errorCode,
+        message: errorMessage,
+        fallback: 'The app will automatically use sample responses when the API is unavailable.'
       },
-      { status: 500 }
+      { status: statusCode }
     );
   }
 }

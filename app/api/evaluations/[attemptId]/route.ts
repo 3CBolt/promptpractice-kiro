@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readEvaluation, hasEvaluation, hasEvaluationError } from '@/lib/storage';
-import { promises as fs } from 'fs';
+import { readEvaluation, readAttempt } from '@/lib/storage';
+import { existsSync } from 'fs';
 import { join } from 'path';
+import { validateFilePath } from '@/lib/validation';
+
+export interface EvaluationStatusResponse {
+  status: 'processing' | 'completed' | 'failed';
+  evaluation?: any;
+  error?: {
+    message: string;
+    code?: string;
+    timestamp?: string;
+  };
+  timestamp: string;
+}
 
 /**
  * GET /api/evaluations/[attemptId]
- * Returns evaluation status and results for a specific attempt
+ * Returns the evaluation status and results for a specific attempt
  */
 export async function GET(
   request: NextRequest,
@@ -14,68 +26,106 @@ export async function GET(
   try {
     const { attemptId } = params;
     
-    // Validate attemptId format (security - path traversal guard)
-    if (!attemptId || !/^[a-zA-Z0-9-_]+$/.test(attemptId)) {
+    if (!attemptId || typeof attemptId !== 'string') {
+      return NextResponse.json(
+        { error: 'attemptId is required and must be a string' },
+        { status: 400 }
+      );
+    }
+
+    // Validate attemptId format and prevent path traversal
+    if (!attemptId.match(/^[a-zA-Z0-9\-_]+$/)) {
       return NextResponse.json(
         { error: 'Invalid attemptId format' },
         { status: 400 }
       );
     }
-
-    // Check if evaluation exists
-    const hasEval = await hasEvaluation(attemptId);
-    const hasError = await hasEvaluationError(attemptId);
-
-    if (hasEval) {
-      // Return completed evaluation
-      const evaluation = await readEvaluation(attemptId);
-      if (!evaluation) {
-        return NextResponse.json(
-          { error: 'Evaluation file exists but could not be read' },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json({
-        status: 'completed',
-        evaluation,
-        timestamp: evaluation.createdAt
-      });
+    
+    // Additional path traversal validation
+    const evaluationFilePath = `data/evaluations/${attemptId}.json`;
+    const errorFilePath = `data/evaluations/${attemptId}.error.json`;
+    const attemptFilePath = `data/attempts/${attemptId}.json`;
+    
+    if (!validateFilePath(evaluationFilePath) || 
+        !validateFilePath(errorFilePath) || 
+        !validateFilePath(attemptFilePath)) {
+      return NextResponse.json(
+        { error: 'Invalid file path detected' },
+        { status: 400 }
+      );
     }
 
-    if (hasError) {
-      // Return error information
+    const dataDir = join(process.cwd(), 'data');
+    const evaluationPath = join(dataDir, 'evaluations', `${attemptId}.json`);
+    const errorPath = join(dataDir, 'evaluations', `${attemptId}.error.json`);
+    const attemptPath = join(dataDir, 'attempts', `${attemptId}.json`);
+
+    // Check if evaluation completed successfully
+    if (existsSync(evaluationPath)) {
       try {
-        const dataDir = process.env.NODE_ENV === 'test' 
-          ? join(process.cwd(), 'data-test') 
-          : join(process.cwd(), 'data');
-        const errorFilePath = join(dataDir, 'evaluations', `${attemptId}.error.json`);
-        const errorContent = await fs.readFile(errorFilePath, 'utf8');
-        const errorData = JSON.parse(errorContent);
-
-        return NextResponse.json({
-          status: 'failed',
-          error: errorData,
-          timestamp: errorData.timestamp
-        });
-      } catch (readError) {
+        const evaluation = await readEvaluation(attemptId);
+        const response: EvaluationStatusResponse = {
+          status: 'completed',
+          evaluation,
+          timestamp: new Date().toISOString()
+        };
+        return NextResponse.json(response);
+      } catch (error) {
+        console.error(`Error reading evaluation ${attemptId}:`, error);
         return NextResponse.json(
-          { error: 'Error file exists but could not be read' },
+          { error: 'Failed to read evaluation results' },
           { status: 500 }
         );
       }
     }
 
-    // Neither evaluation nor error exists - still processing or not started
-    return NextResponse.json({
+    // Check if evaluation failed
+    if (existsSync(errorPath)) {
+      try {
+        const errorData = JSON.parse(require('fs').readFileSync(errorPath, 'utf8'));
+        const response: EvaluationStatusResponse = {
+          status: 'failed',
+          error: {
+            message: errorData.error || 'Evaluation failed',
+            code: errorData.code || 'EVALUATION_FAILED',
+            timestamp: errorData.timestamp
+          },
+          timestamp: new Date().toISOString()
+        };
+        return NextResponse.json(response);
+      } catch (error) {
+        console.error(`Error reading error file ${attemptId}:`, error);
+        const response: EvaluationStatusResponse = {
+          status: 'failed',
+          error: {
+            message: 'Evaluation failed with unknown error',
+            code: 'UNKNOWN_ERROR'
+          },
+          timestamp: new Date().toISOString()
+        };
+        return NextResponse.json(response);
+      }
+    }
+
+    // Check if attempt exists (to distinguish between processing and not found)
+    if (!existsSync(attemptPath)) {
+      return NextResponse.json(
+        { error: 'Attempt not found' },
+        { status: 404 }
+      );
+    }
+
+    // Attempt exists but no evaluation yet - still processing
+    const response: EvaluationStatusResponse = {
       status: 'processing',
-      message: 'Evaluation is being processed or has not started yet'
-    });
+      timestamp: new Date().toISOString()
+    };
+    return NextResponse.json(response);
 
   } catch (error) {
-    console.error(`Error checking evaluation status for ${params.attemptId}:`, error);
+    console.error('Error in GET /api/evaluations/[attemptId]:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to check evaluation status' },
       { status: 500 }
     );
   }

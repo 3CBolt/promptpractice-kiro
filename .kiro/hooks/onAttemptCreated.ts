@@ -153,18 +153,19 @@ async function callApiWithRetry(
 // Main hook processing function
 export async function processAttemptFile(filePath: string): Promise<void> {
   const startTime = Date.now();
-  let attemptId: string;
-  let attempt: Attempt | null;
+  
+  // Extract attemptId from filename first (outside try block)
+  const filename = filePath.split('/').pop() || '';
+  const attemptId = filename.replace('.json', '');
+  
+  if (!attemptId) {
+    throw new Error('Could not extract attemptId from filename');
+  }
+
+  let attempt: Attempt | null = null;
   let logData: any = {};
 
   try {
-    // Extract attemptId from filename
-    const filename = filePath.split('/').pop() || '';
-    attemptId = filename.replace('.json', '');
-    
-    if (!attemptId) {
-      throw new Error('Could not extract attemptId from filename');
-    }
 
     logData.attemptId = attemptId;
     console.log(`[Hook] Processing attempt: ${attemptId}`);

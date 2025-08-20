@@ -1,0 +1,141 @@
+{
+  "rubric": {
+    "version": "1.0.0",
+    "lastUpdated": "2025-01-20T21:00:00.000Z",
+    "source": ".kiro/steering/prompts.md",
+    "dimensions": {
+      "clarity": {
+        "name": "Clarity",
+        "description": "Evaluates how clear, coherent, and well-structured the model's response is",
+        "min": 0,
+        "max": 5,
+        "weight": 1.0,
+        "criteria": {
+          "5": "Response is exceptionally clear, well-organized, and easy to understand",
+          "4": "Response is clear and well-structured with minor areas for improvement",
+          "3": "Response is generally clear but may have some organizational issues",
+          "2": "Response has clarity issues that impact understanding",
+          "1": "Response is difficult to understand or poorly structured",
+          "0": "Response is incomprehensible or completely unclear"
+        },
+        "commonIssues": [
+          "Rambling or unfocused responses",
+          "Poor grammar or sentence structure",
+          "Lack of logical flow",
+          "Ambiguous or confusing language",
+          "Missing context or assumptions"
+        ]
+      },
+      "completeness": {
+        "name": "Completeness",
+        "description": "Evaluates how thoroughly the model addresses the user's prompt and requirements",
+        "min": 0,
+        "max": 5,
+        "weight": 1.0,
+        "criteria": {
+          "5": "Fully addresses all aspects of the prompt with comprehensive coverage",
+          "4": "Addresses most aspects well with minor gaps",
+          "3": "Covers the main points but may miss some details",
+          "2": "Partially addresses the prompt with notable omissions",
+          "1": "Minimally addresses the prompt with significant gaps",
+          "0": "Fails to address the prompt or provides irrelevant content"
+        },
+        "commonIssues": [
+          "Ignoring parts of multi-part questions",
+          "Providing generic responses that don't match the specific request",
+          "Missing key information or context",
+          "Stopping mid-thought or providing incomplete answers",
+          "Addressing the wrong topic entirely"
+        ]
+      }
+    },
+    "totalScore": {
+      "min": 0,
+      "max": 10,
+      "calculation": "sum",
+      "description": "Total score is the sum of clarity and completeness scores"
+    },
+    "feedbackGuidelines": {
+      "structure": [
+        "Positive observation (what worked well)",
+        "Specific improvement area (what could be better)",
+        "Actionable suggestion (how to improve)"
+      ],
+      "tone": {
+        "educational": true,
+        "constructive": true,
+        "encouraging": true,
+        "beginnerFriendly": true,
+        "concise": true,
+        "maxLength": 1000
+      },
+      "language": {
+        "usePositiveFraming": true,
+        "avoidJargon": true,
+        "provideExamples": true,
+        "useConsiderTry": true,
+        "avoidShouldMust": true
+      }
+    },
+    "improvementSuggestions": {
+      "clarity": [
+        "Try asking for step-by-step explanations",
+        "Consider requesting examples or specific details",
+        "Ask the model to organize information with headings or bullet points",
+        "Be more specific about the format you want"
+      ],
+      "completeness": [
+        "Break complex questions into smaller parts",
+        "Ask follow-up questions to cover all aspects",
+        "Request comprehensive coverage of the topic",
+        "Specify all the information you need upfront"
+      ],
+      "both": [
+        "Try providing more context in your prompt",
+        "Consider using prompt templates or frameworks",
+        "Ask the model to explain its reasoning",
+        "Request both an overview and detailed explanation"
+      ]
+    },
+    "modelSpecificConsiderations": {
+      "hosted": {
+        "expectHigherQuality": true,
+        "accountForTokenLimits": true,
+        "considerModelStrengths": true
+      },
+      "sample": {
+        "applyLenientScoring": true,
+        "focusOnPromptImprovement": true,
+        "indicateOfflineLimitations": true
+      },
+      "local": {
+        "applyLenientScoring": true,
+        "focusOnPromptImprovement": true,
+        "indicateOfflineLimitations": true
+      }
+    },
+    "errorHandling": {
+      "invalidResponse": {
+        "clarity": 0,
+        "completeness": 0,
+        "notes": "The model didn't provide a valid response. Try rephrasing your prompt or checking for technical issues."
+      },
+      "partialResponse": {
+        "adjustCompleteness": true,
+        "notes": "Response appears cut off due to length limits. Try asking for a more concise answer or break into multiple prompts."
+      },
+      "offTopicResponse": {
+        "scoreByRelevance": true,
+        "notes": "The response doesn't address your prompt. Try being more specific about what you want."
+      }
+    }
+  },
+  "metadata": {
+    "parsedAt": "2025-01-20T21:00:00.000Z",
+    "parsedBy": "rubric-parser",
+    "dimensionsFound": ["clarity", "completeness"],
+    "totalDimensions": 2,
+    "parsingSuccess": true,
+    "sourceFileHash": "sha256:placeholder"
+  }
+}

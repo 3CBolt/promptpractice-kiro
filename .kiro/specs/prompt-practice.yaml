@@ -1,0 +1,116 @@
+# Kiro Spec Configuration for Prompt Practice App
+# Defines the SubmitAttempt flow and data validation schemas
+
+name: prompt-practice-app
+version: 1.0.0
+description: Educational platform for learning prompt engineering through interactive guides and labs
+
+flows:
+  SubmitAttempt:
+    description: Process user prompt submissions through model inference and evaluation
+    trigger:
+      type: file_created
+      pattern: "data/attempts/*.json"
+    steps:
+      - name: validate_attempt
+        description: Validate attempt JSON structure and content
+        schema: AttemptSchema
+        error_handling:
+          invalid_schema: write_error_file
+          missing_fields: write_error_file
+      
+      - name: call_compare_api
+        description: Send attempt to /api/compare endpoint for model inference
+        endpoint: "/api/compare"
+        method: POST
+        timeout: 30000
+        retry:
+          max_attempts: 3
+          backoff: exponential
+        error_handling:
+          timeout: write_error_file
+          api_error: write_error_file
+          rate_limit: write_error_file
+      
+      - name: validate_evaluation
+        description: Validate evaluation results before writing
+        schema: EvaluationSchema
+        error_handling:
+          invalid_results: write_error_file
+      
+      - name: write_evaluation
+        description: Write evaluation results to data/evaluations/
+        output_path: "data/evaluations/{attemptId}.json"
+        format: pretty_json
+        error_handling:
+          write_error: write_error_file
+      
+      - name: log_completion
+        description: Log successful evaluation completion
+        fields:
+          - attemptId
+          - labId
+          - models
+          - latencyMs
+          - status
+
+schemas:
+  # Reference to external schema file that matches TypeScript interfaces exactly
+  schema_file: ".kiro/specs/schemas.json"
+  
+  # Primary schemas used by the hook system
+  AttemptSchema:
+    $ref: "schemas.json#/definitions/AttemptSchema"
+  
+  EvaluationSchema:
+    $ref: "schemas.json#/definitions/EvaluationSchema"
+  
+  EvaluationErrorSchema:
+    $ref: "schemas.json#/definitions/EvaluationErrorSchema"
+  
+  # Additional schemas for completeness
+  ModelResultSchema:
+    $ref: "schemas.json#/definitions/ModelResultSchema"
+  
+  ModelProviderSchema:
+    $ref: "schemas.json#/definitions/ModelProviderSchema"
+
+error_handling:
+  write_error_file:
+    path: "data/evaluations/{attemptId}.error.json"
+    format: pretty_json
+    include_timestamp: true
+    include_error_details: true
+    include_original_data: true
+
+security:
+  path_traversal_protection: true
+  input_sanitization: true
+  max_file_size: 1048576  # 1MB
+  allowed_file_extensions: [".json"]
+
+logging:
+  level: info
+  include_timing: true
+  include_model_info: true
+  log_successful_evaluations: true
+  log_errors: true
+  log_retries: true
+
+documentation:
+  hook_system: ".kiro/specs/hook-documentation.md"
+  evaluator_guidelines: ".kiro/steering/prompts.md"
+  schemas: ".kiro/specs/schemas.json"
+  
+notes: |
+  This configuration defines the SubmitAttempt flow for automated evaluation of user prompts.
+  
+  Key Features:
+  - Schema validation matches TypeScript interfaces exactly to prevent drift
+  - Comprehensive error handling with retry logic and fallback strategies
+  - Idempotent processing prevents duplicate evaluations
+  - Security measures include path traversal protection and input sanitization
+  - Detailed logging and monitoring for troubleshooting
+  
+  For detailed documentation on hook triggers, error handling, and troubleshooting,
+  see the referenced documentation files above.

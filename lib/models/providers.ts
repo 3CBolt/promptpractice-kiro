@@ -109,7 +109,9 @@ async function callHuggingFaceAPI(
   const apiKey = process.env.HUGGINGFACE_API_KEY;
   
   if (!apiKey) {
-    throw new Error('HUGGINGFACE_API_KEY not configured');
+    const error = new Error('HUGGINGFACE_API_KEY not configured');
+    (error as any).code = 'NO_API_KEY';
+    throw error;
   }
   
   const hfModelId = HF_MODEL_MAPPINGS[modelId];
@@ -157,10 +159,23 @@ async function callHuggingFaceAPI(
         if (retryAfter) {
           rateLimitState.resetTime = Date.now() + (parseInt(retryAfter) * 1000);
         }
-        throw new Error('RATE_LIMITED');
+        const error = new Error('Hugging Face quota exceeded. Rate limit active.');
+        (error as any).code = 'RATE_LIMITED';
+        (error as any).resetTime = rateLimitState.resetTime;
+        throw error;
       }
       
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      // Server errors
+      if (response.status >= 500) {
+        const error = new Error(`Hugging Face API server error: ${response.status}`);
+        (error as any).code = 'API_ERROR';
+        throw error;
+      }
+      
+      // Other HTTP errors
+      const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
+      (error as any).code = 'HTTP_ERROR';
+      throw error;
     }
     
     const data = await response.json();
@@ -188,13 +203,25 @@ async function callHuggingFaceAPI(
     };
     
   } catch (error) {
-    if (error instanceof Error && error.message === 'RATE_LIMITED') {
+    // Re-throw known error types
+    if (error instanceof Error && ['RATE_LIMITED', 'API_ERROR', 'NO_API_KEY'].includes((error as any).code)) {
       throw error;
+    }
+    
+    // Network/fetch errors
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      const networkError = new Error('Network connection failed. Please check your internet connection.');
+      (networkError as any).code = 'NETWORK_ERROR';
+      throw networkError;
     }
     
     // Log other errors but don't update rate limit for network/API errors
     console.error(`Hugging Face API error for ${modelId}:`, error);
-    throw error;
+    
+    // Generic API error
+    const apiError = new Error(`API request failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    (apiError as any).code = 'API_ERROR';
+    throw apiError;
   }
 }
 

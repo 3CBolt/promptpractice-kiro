@@ -18,7 +18,7 @@ export default async function GuidePage({ params }: GuidePageProps) {
 
   // Load guide content
   const guide = await loadGuide(slug);
-  
+
   if (!guide) {
     notFound();
   }
@@ -39,7 +39,7 @@ export default async function GuidePage({ params }: GuidePageProps) {
 
         {/* Guide content */}
         <div className="guide-content">
-          <div 
+          <div
             className="markdown-content"
             dangerouslySetInnerHTML={{ __html: guide.body }}
           />
@@ -57,7 +57,7 @@ export default async function GuidePage({ params }: GuidePageProps) {
                 <span className="nav-title">{navigation.previous.title}</span>
               </Link>
             )}
-            
+
             {navigation.next && (
               <Link
                 href={`/guides/${navigation.next.slug}`}
@@ -77,6 +77,8 @@ export default async function GuidePage({ params }: GuidePageProps) {
 // Generate static params for all guide slugs
 export async function generateStaticParams() {
   const { GUIDE_SLUGS } = await import('@/lib/guides');
-  
+
   return GUIDE_SLUGS.map((slug) => ({
-    slug
+    slug,
+  }));
+}

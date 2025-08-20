@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { Attempt, Evaluation } from '@/types';
-import { generateId } from './utils';
+import { generateId, validateFilePath, validateAttempt, validateEvaluation } from './utils';
 
 // Path utilities - configurable for testing
 const getDataDir = () => process.env.NODE_ENV === 'test' ? join(process.cwd(), 'data-test') : join(process.cwd(), 'data');
@@ -29,19 +29,47 @@ async function ensureDirectories(): Promise<void> {
 
 // Attempt storage functions
 export async function writeAttempt(attempt: Attempt): Promise<void> {
+  // Validate attempt data
+  const validation = validateAttempt(attempt);
+  if (!validation.isValid) {
+    throw new Error(`Invalid attempt data: ${validation.errors?.join(', ')}`);
+  }
+  
+  // Validate file path to prevent directory traversal
+  const fileName = `${attempt.id}.json`;
+  if (!validateFilePath(`data/attempts/${fileName}`)) {
+    throw new Error('Invalid file path detected');
+  }
+  
   await ensureDirectories();
   const { ATTEMPTS_DIR } = getDirectories();
-  const filePath = join(ATTEMPTS_DIR, `${attempt.id}.json`);
-  const jsonContent = JSON.stringify(attempt, null, 2); // Pretty-printed with 2-space indentation
+  const filePath = join(ATTEMPTS_DIR, fileName);
+  const jsonContent = JSON.stringify(validation.attempt, null, 2); // Pretty-printed with 2-space indentation
   await fs.writeFile(filePath, jsonContent, 'utf8');
 }
 
 export async function readAttempt(attemptId: string): Promise<Attempt | null> {
   try {
+    // Validate file path to prevent directory traversal
+    const fileName = `${attemptId}.json`;
+    if (!validateFilePath(`data/attempts/${fileName}`)) {
+      console.warn('Invalid file path detected in readAttempt:', attemptId);
+      return null;
+    }
+    
     const { ATTEMPTS_DIR } = getDirectories();
-    const filePath = join(ATTEMPTS_DIR, `${attemptId}.json`);
+    const filePath = join(ATTEMPTS_DIR, fileName);
     const content = await fs.readFile(filePath, 'utf8');
-    return JSON.parse(content) as Attempt;
+    const parsed = JSON.parse(content);
+    
+    // Validate the loaded data
+    const validation = validateAttempt(parsed);
+    if (!validation.isValid) {
+      console.warn('Invalid attempt data loaded from file:', validation.errors);
+      return null;
+    }
+    
+    return validation.attempt!;
   } catch (error) {
     return null;
   }
@@ -62,19 +90,47 @@ export async function listAttempts(): Promise<string[]> {
 
 // Evaluation storage functions
 export async function writeEvaluation(evaluation: Evaluation): Promise<void> {
+  // Validate evaluation data
+  const validation = validateEvaluation(evaluation);
+  if (!validation.isValid) {
+    throw new Error(`Invalid evaluation data: ${validation.errors?.join(', ')}`);
+  }
+  
+  // Validate file path to prevent directory traversal
+  const fileName = `${evaluation.attemptId}.json`;
+  if (!validateFilePath(`data/evaluations/${fileName}`)) {
+    throw new Error('Invalid file path detected');
+  }
+  
   await ensureDirectories();
   const { EVALUATIONS_DIR } = getDirectories();
-  const filePath = join(EVALUATIONS_DIR, `${evaluation.attemptId}.json`);
-  const jsonContent = JSON.stringify(evaluation, null, 2); // Pretty-printed with 2-space indentation
+  const filePath = join(EVALUATIONS_DIR, fileName);
+  const jsonContent = JSON.stringify(validation.evaluation, null, 2); // Pretty-printed with 2-space indentation
   await fs.writeFile(filePath, jsonContent, 'utf8');
 }
 
 export async function readEvaluation(attemptId: string): Promise<Evaluation | null> {
   try {
+    // Validate file path to prevent directory traversal
+    const fileName = `${attemptId}.json`;
+    if (!validateFilePath(`data/evaluations/${fileName}`)) {
+      console.warn('Invalid file path detected in readEvaluation:', attemptId);
+      return null;
+    }
+    
     const { EVALUATIONS_DIR } = getDirectories();
-    const filePath = join(EVALUATIONS_DIR, `${attemptId}.json`);
+    const filePath = join(EVALUATIONS_DIR, fileName);
     const content = await fs.readFile(filePath, 'utf8');
-    return JSON.parse(content) as Evaluation;
+    const parsed = JSON.parse(content);
+    
+    // Validate the loaded data
+    const validation = validateEvaluation(parsed);
+    if (!validation.isValid) {
+      console.warn('Invalid evaluation data loaded from file:', validation.errors);
+      return null;
+    }
+    
+    return validation.evaluation!;
   } catch (error) {
     return null;
   }
