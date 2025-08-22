@@ -149,4 +149,67 @@ export function useEvaluationStatus(
           // If we've had too many consecutive errors or exceeded max retries, fail
           if (newRetryCount >= maxRetries || consecutiveErrors >= 5) {
             return {
-       
+              ...prev,
+              status: 'failed',
+              error: {
+                message: error instanceof Error ? error.message : 'Failed to check evaluation status',
+                code: 'POLLING_FAILED',
+                timestamp: new Date().toISOString()
+              },
+              retryCount: newRetryCount
+            };
+          }
+          
+          return {
+            ...prev,
+            retryCount: newRetryCount
+          };
+        });
+      }
+    };
+
+    // Initial poll with slight delay to avoid immediate polling
+    const initialTimeout = setTimeout(pollForStatus, 500);
+
+    // Set up polling interval with exponential backoff on errors
+    const baseInterval = consecutiveErrors > 0 
+      ? Math.min(pollInterval * Math.pow(2, consecutiveErrors), 10000) // Max 10 second intervals
+      : pollInterval;
+    
+    const interval = setInterval(pollForStatus, baseInterval);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+    };
+  }, [attemptId, state.status, startTime, pollInterval, maxRetries, timeoutMs, consecutiveErrors]);
+
+  // Manual retry function
+  const retry = useCallback(() => {
+    if (attemptId) {
+      setState({
+        status: 'processing',
+        retryCount: 0
+      });
+      setStartTime(Date.now());
+    }
+  }, [attemptId]);
+
+  // Reset function
+  const reset = useCallback(() => {
+    setState({
+      status: 'idle',
+      retryCount: 0
+    });
+    setStartTime(null);
+  }, []);
+
+  return {
+    ...state,
+    retry,
+    reset,
+    isPolling: state.status === 'processing',
+    hasTimedOut: state.status === 'timeout',
+    canRetry: state.status === 'failed' || state.status === 'timeout'
+  };
+}

@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Attempt Schema v1.0",
+  "description": "Schema for user prompt attempts in the Prompt Practice App",
+  "type": "object",
+  "required": ["attemptId", "userId", "labId", "userPrompt", "models", "timestamp", "schemaVersion"],
+  "properties": {
+    "attemptId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]{8}-[a-z0-9]{6}$",
+      "description": "Unique identifier for the attempt"
+    },
+    "userId": {
+      "type": "string",
+      "default": "anonymous",
+      "description": "User identifier, defaults to anonymous for demo"
+    },
+    "labId": {
+      "type": "string",
+      "enum": ["practice-basics", "compare-basics", "system-prompt-lab"],
+      "description": "Laboratory environment identifier"
+    },
+    "userPrompt": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "The user's input prompt"
+    },
+    "systemPrompt": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional system prompt for context"
+    },
+    "models": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "maxItems": 3,
+      "description": "Array of model identifiers to test"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of attempt creation"
+    },
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Schema version for compatibility tracking"
+    },
+    "rubricVersion": {
+      "type": "string",
+      "default": "1.0",
+      "description": "Version of evaluation rubric to use"
+    },
+    "modelConfig": {
+      "type": "object",
+      "properties": {
+        "maxTokens": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 2048
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        }
+      },
+      "description": "Model configuration parameters"
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "sourceGuide": {
+          "type": "string",
+          "description": "Guide slug that led to this attempt"
+        },
+        "prefillPrompt": {
+          "type": "string",
+          "description": "Prompt text prefilled from guide CTA"
+        }
+      },
+      "description": "Context about how the attempt was initiated"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,9 +1,11 @@
 'use client';
 
-// Model selection component with source badges
+// Model selection component with source badges and WebGPU support
 import React, { useState, useEffect } from 'react';
 import { ModelProvider } from '@/types';
 import { MODEL_REGISTRY, getSourceBadge, areHostedModelsAvailable } from '@/lib/models/providers';
+import { WEBGPU_MODELS, WebGPUModelConfig, getWebGPUManager, detectWebGPUSupport } from '@/lib/models/webgpuModel';
+import { tokens, getFocusRing, getFocusBoxShadow } from '@/styles/tokens';
 
 interface ModelPickerProps {
   selectedModels: string[];
@@ -13,6 +15,9 @@ interface ModelPickerProps {
   disabled?: boolean;
   'aria-label'?: string;
   'aria-describedby'?: string;
+  showWebGPUModels?: boolean;
+  onWebGPUModelSelect?: (modelId: string) => void;
+  webgpuSupported?: boolean;
 }
 
 export default function ModelPicker({
@@ -22,10 +27,15 @@ export default function ModelPicker({
   availableModels = MODEL_REGISTRY,
   disabled = false,
   'aria-label': ariaLabel = 'Select models for comparison',
-  'aria-describedby': ariaDescribedBy
+  'aria-describedby': ariaDescribedBy,
+  showWebGPUModels = false,
+  onWebGPUModelSelect,
+  webgpuSupported = false
 }: ModelPickerProps) {
   const hostedAvailable = areHostedModelsAvailable();
   const [focusedModel, setFocusedModel] = useState<string | null>(null);
+  const [selectedWebGPUModel, setSelectedWebGPUModel] = useState<string | null>(null);
+  const [showTooltip, setShowTooltip] = useState<string | null>(null);
   
   const handleModelToggle = (modelId: string) => {
     if (disabled) return;
@@ -42,6 +52,19 @@ export default function ModelPicker({
         announceToScreenReader(`${modelId} selected`);
       }
     }
+  };
+
+  const handleWebGPUModelSelect = (modelId: string) => {
+    if (disabled) return;
+    
+    setSelectedWebGPUModel(modelId);
+    if (onWebGPUModelSelect) {
+      onWebGPUModelSelect(modelId);
+    }
+    
+    // Remember user's choice
+    localStorage.setItem('webgpu_last_model', modelId);
+    announceToScreenReader(`WebGPU model ${modelId} selected`);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent, modelId: string) => {
@@ -78,26 +101,176 @@ export default function ModelPicker({
     return true;
   };
 
+  const getWebGPUModelTooltip = (model: WebGPUModelConfig) => {
+    return {
+      speed: model.speed === 'fast' ? 'Very fast responses' : 
+             model.speed === 'medium' ? 'Balanced speed' : 'Slower but thorough',
+      quality: model.quality === 'basic' ? 'Good for simple tasks' :
+               model.quality === 'good' ? 'Better reasoning and context' : 'Excellent quality',
+      size: `Download size: ${model.estimatedSize}`,
+      description: model.description
+    };
+  };
+
+  // Load last selected WebGPU model on mount
+  useEffect(() => {
+    if (showWebGPUModels) {
+      const lastModel = localStorage.getItem('webgpu_last_model');
+      if (lastModel && WEBGPU_MODELS.find(m => m.id === lastModel)) {
+        setSelectedWebGPUModel(lastModel);
+      } else {
+        // Default to first model
+        setSelectedWebGPUModel(WEBGPU_MODELS[0]?.id || null);
+      }
+    }
+  }, [showWebGPUModels]);
+
   return (
     <div 
       className="model-picker"
       role="group"
       aria-label={ariaLabel}
       aria-describedby={ariaDescribedBy}
+      style={{
+        background: tokens.colors.background.primary,
+        borderRadius: tokens.borderRadius.lg,
+        padding: tokens.spacing[6],
+        border: `1px solid ${tokens.colors.border.light}`,
+        boxShadow: tokens.boxShadow.sm,
+      }}
     >
       <div className="model-picker-header">
-        <h3 className="model-picker-title" id="model-picker-title">Select Models</h3>
-        <span 
-          className="model-picker-count"
-          aria-live="polite"
-          aria-atomic="true"
+        <h3 
+          className="model-picker-title" 
+          id="model-picker-title"
+          style={{
+            fontSize: tokens.typography.fontSize.lg,
+            fontWeight: tokens.typography.fontWeight.semibold,
+            color: tokens.colors.text.primary,
+            margin: 0,
+          }}
         >
-          {selectedModels.length}/{maxSelection} selected
-        </span>
+          {showWebGPUModels ? 'Choose Browser Model' : 'Select Models'}
+        </h3>
+        {!showWebGPUModels && (
+          <span 
+            className="model-picker-count"
+            aria-live="polite"
+            aria-atomic="true"
+            style={{
+              fontSize: tokens.typography.fontSize.sm,
+              color: tokens.colors.text.tertiary,
+              background: tokens.colors.background.secondary,
+              padding: `${tokens.spacing[1]} ${tokens.spacing[2]}`,
+              borderRadius: tokens.borderRadius.base,
+            }}
+          >
+            {selectedModels.length}/{maxSelection} selected
+          </span>
+        )}
       </div>
+
+      {showWebGPUModels && (
+        <div className="webgpu-info">
+          <p className="webgpu-description">
+            This Lab runs a small open model in your browser. <strong>No setup needed.</strong>
+          </p>
+          {!webgpuSupported && (
+            <div className="webgpu-fallback-notice" role="alert">
+              <span className="notice-icon">ℹ️</span>
+              WebGPU not supported. You'll see demo responses instead.
+            </div>
+          )}
+        </div>
+      )}
       
       <div className="model-grid">
-        {availableModels.map((model) => {
+        {showWebGPUModels ? (
+          // WebGPU Models
+          WEBGPU_MODELS.map((model) => {
+            const isSelected = selectedWebGPUModel === model.id;
+            const tooltip = getWebGPUModelTooltip(model);
+            
+            return (
+              <div
+                key={model.id}
+                className={`webgpu-model-card ${isSelected ? 'selected' : ''} ${!webgpuSupported ? 'demo-mode' : ''}`}
+                onClick={() => handleWebGPUModelSelect(model.id)}
+                onMouseEnter={() => setShowTooltip(model.id)}
+                onMouseLeave={() => setShowTooltip(null)}
+                role="radio"
+                aria-checked={isSelected}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleWebGPUModelSelect(model.id);
+                  }
+                }}
+                style={{
+                  position: 'relative',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  padding: tokens.spacing[4],
+                  border: `2px solid ${isSelected ? tokens.colors.success[600] : tokens.colors.border.light}`,
+                  borderRadius: tokens.borderRadius.lg,
+                  background: isSelected ? tokens.colors.success[50] : tokens.colors.background.secondary,
+                  cursor: 'pointer',
+                  transition: `all ${tokens.animation.duration.normal} ${tokens.animation.easing.inOut}`,
+                  boxShadow: isSelected ? tokens.boxShadow.md : tokens.boxShadow.sm,
+                  outline: 'none',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.outline = `${tokens.focus.ring.width} ${tokens.focus.ring.style} ${tokens.focus.ring.color}`;
+                  e.currentTarget.style.outlineOffset = tokens.focus.ring.offset;
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.outline = 'none';
+                }}
+              >
+                <div className="model-card-header">
+                  <span className="model-name">{model.name}</span>
+                  <div className="model-badges">
+                    <span className={`speed-badge speed-${model.speed}`}>
+                      {model.speed === 'fast' ? '⚡' : model.speed === 'medium' ? '⚖️' : '🐌'}
+                    </span>
+                    <span className={`quality-badge quality-${model.quality}`}>
+                      {model.quality === 'basic' ? '⭐' : model.quality === 'good' ? '⭐⭐' : '⭐⭐⭐'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="model-card-details">
+                  <p className="model-description">{model.description}</p>
+                  <p className="model-size">{model.estimatedSize}</p>
+                  {!webgpuSupported && (
+                    <span className="demo-indicator">Demo Mode</span>
+                  )}
+                </div>
+                
+                {isSelected && (
+                  <div className="selected-indicator" aria-hidden="true">✓</div>
+                )}
+                
+                {showTooltip === model.id && (
+                  <div className="model-tooltip" role="tooltip">
+                    <div className="tooltip-section">
+                      <strong>Speed:</strong> {tooltip.speed}
+                    </div>
+                    <div className="tooltip-section">
+                      <strong>Quality:</strong> {tooltip.quality}
+                    </div>
+                    <div className="tooltip-section">
+                      <strong>Size:</strong> {tooltip.size}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        ) : (
+          // Regular Models
+          availableModels.map((model) => {
           const isSelected = selectedModels.includes(model.id);
           const isAvailable = isModelAvailable(model);
           const canSelect = !disabled && (isSelected || selectedModels.length < maxSelection);
@@ -115,6 +288,45 @@ export default function ModelPicker({
               aria-pressed={isSelected}
               aria-describedby={`${model.id}-description`}
               aria-labelledby={`${model.id}-name`}
+              style={{
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                padding: tokens.spacing[4],
+                border: `2px solid ${
+                  isSelected ? tokens.colors.success[600] : 
+                  !isAvailable ? tokens.colors.border.light :
+                  tokens.colors.border.light
+                }`,
+                borderStyle: !isAvailable ? 'dashed' : 'solid',
+                borderRadius: tokens.borderRadius.lg,
+                background: isSelected ? tokens.colors.success[50] : tokens.colors.background.secondary,
+                cursor: (!canSelect || !isAvailable) ? 'not-allowed' : 'pointer',
+                opacity: (!canSelect || !isAvailable) ? 0.6 : 1,
+                transition: `all ${tokens.animation.duration.normal} ${tokens.animation.easing.inOut}`,
+                textAlign: 'left',
+                boxShadow: isSelected ? tokens.boxShadow.md : tokens.boxShadow.sm,
+                outline: 'none',
+              }}
+              onMouseEnter={(e) => {
+                if (canSelect && isAvailable) {
+                  e.currentTarget.style.borderColor = tokens.colors.primary[500];
+                  e.currentTarget.style.boxShadow = `0 2px 8px ${tokens.colors.primary[500]}25`;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isSelected) {
+                  e.currentTarget.style.borderColor = tokens.colors.border.light;
+                  e.currentTarget.style.boxShadow = tokens.boxShadow.sm;
+                }
+              }}
+              onFocusCapture={(e) => {
+                e.currentTarget.style.outline = `${tokens.focus.ring.width} ${tokens.focus.ring.style} ${tokens.focus.ring.color}`;
+                e.currentTarget.style.outlineOffset = tokens.focus.ring.offset;
+              }}
+              onBlurCapture={(e) => {
+                e.currentTarget.style.outline = 'none';
+              }}
             >
               <div className="model-card-header">
                 <span className="model-name" id={`${model.id}-name`}>{model.name}</span>
@@ -135,7 +347,8 @@ export default function ModelPicker({
               )}
             </button>
           );
-        })}
+        })
+        )}
       </div>
       
       {selectedModels.length >= maxSelection && (

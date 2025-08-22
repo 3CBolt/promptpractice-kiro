@@ -1,5 +1,6 @@
 import { ModelProvider, ModelResult } from '@/types';
 import { getLocalModelResult } from './localModel';
+import { WEBGPU_MODELS, getWebGPUManager } from './webgpuModel';
 
 /**
  * Model provider system with Hugging Face API integration and local fallback
@@ -8,6 +9,13 @@ import { getLocalModelResult } from './localModel';
 
 // Model registry with all available models
 export const MODEL_REGISTRY: ModelProvider[] = [
+  // WebGPU models (browser-based)
+  ...WEBGPU_MODELS.map(model => ({
+    id: model.id,
+    name: model.name,
+    source: 'local' as const,
+    maxTokens: 512
+  })),
   // Hosted models (Hugging Face API)
   {
     id: 'llama3.1-8b',
@@ -250,6 +258,30 @@ export async function callModel(
   
   if (!provider) {
     throw new Error(`Unknown model: ${modelId}`);
+  }
+  
+  // Check if it's a WebGPU model
+  const webgpuModel = WEBGPU_MODELS.find(m => m.id === modelId);
+  if (webgpuModel) {
+    const manager = getWebGPUManager();
+    
+    // If model is not loaded, try to load it
+    if (!manager.isModelLoaded() || manager.getCurrentModelId() !== modelId) {
+      try {
+        await manager.loadModel(modelId);
+      } catch (error) {
+        console.log(`WebGPU model ${modelId} failed to load, falling back to sample:`, error);
+        // Fallback to sample response
+        return getLocalModelResult('local-stub', prompt, systemPrompt);
+      }
+    }
+    
+    try {
+      return await manager.generateResponse(prompt, systemPrompt);
+    } catch (error) {
+      console.log(`WebGPU inference failed for ${modelId}, falling back to sample:`, error);
+      return getLocalModelResult('local-stub', prompt, systemPrompt);
+    }
   }
   
   // If it's a local model, call directly

@@ -1,7 +1,9 @@
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { Attempt, Evaluation } from '@/types';
-import { readAttempt, writeEvaluation, writeEvaluationError, hasEvaluation, hasEvaluationError } from '@/lib/storage';
+import { Attempt, Evaluation } from '../../types';
+import { readAttempt, writeEvaluation, writeEvaluationError, hasEvaluation, hasEvaluationError } from '../../lib/storage';
+import { idempotencyManager } from '../../lib/idempotency';
+import { AttemptStatus } from '../../types/contracts';
 
 // Schema validation with path traversal guards
 function validateAttempt(data: any): data is Attempt {
@@ -164,13 +166,26 @@ export async function processAttemptFile(filePath: string): Promise<void> {
 
   let attempt: Attempt | null = null;
   let logData: any = {};
+  let lockAcquired = false;
 
   try {
 
     logData.attemptId = attemptId;
     console.log(`[Hook] Processing attempt: ${attemptId}`);
 
-    // 1. Schema Validation & Security
+    // 1. Idempotency Lock Acquisition
+    lockAcquired = await idempotencyManager.acquireLock(attemptId);
+    if (!lockAcquired) {
+      logData.status = 'skipped';
+      logData.reason = 'already being processed (lock held)';
+      console.log(`[Hook] Skipped ${attemptId}: already being processed by another instance`);
+      return;
+    }
+
+    // Update status to running
+    await idempotencyManager.updateStatus(attemptId, AttemptStatus.RUNNING);
+
+    // 2. Schema Validation & Security
     attempt = await readAttempt(attemptId);
     if (!attempt) {
       throw new Error(`Could not read attempt file: ${attemptId}`);
@@ -180,11 +195,12 @@ export async function processAttemptFile(filePath: string): Promise<void> {
     logData.labId = attempt.labId;
     logData.models = attempt.models;
 
-    // 2. Idempotency Check
+    // 3. Additional Idempotency Check (file-based)
     if (await hasEvaluation(attemptId)) {
       logData.status = 'skipped';
       logData.reason = 'evaluation already exists';
       console.log(`[Hook] Skipped ${attemptId}: evaluation already exists`);
+      await idempotencyManager.updateStatus(attemptId, AttemptStatus.SUCCESS);
       return;
     }
 
@@ -193,7 +209,7 @@ export async function processAttemptFile(filePath: string): Promise<void> {
       console.log(`[Hook] Previous error found for ${attemptId}, proceeding with retry`);
     }
 
-    // 3. API Call with Retry Logic
+    // 4. API Call with Retry Logic
     console.log(`[Hook] Calling /api/compare for ${attemptId} with models:`, attempt.models);
     const apiResponse = await callApiWithRetry(
       attempt.userPrompt,
@@ -205,15 +221,20 @@ export async function processAttemptFile(filePath: string): Promise<void> {
     logData.fallbacksUsed = apiResponse.metadata?.fallbacksUsed || [];
     logData.retryCount = 0; // Successful on first try or within retry limit
 
-    // 4. Result Processing - Success
+    // 5. Result Processing - Success
     const evaluation: Evaluation = {
-      id: `eval-${attemptId}`,
       attemptId,
-      perModelResults: apiResponse.results,
-      createdAt: new Date().toISOString()
+      status: AttemptStatus.SUCCESS,
+      results: apiResponse.results,
+      rubricVersion: '1.0',
+      timestamp: new Date().toISOString(),
+      schemaVersion: '1.0'
     };
 
     await writeEvaluation(evaluation);
+    
+    // Update idempotency status to success
+    await idempotencyManager.updateStatus(attemptId, AttemptStatus.SUCCESS);
     
     logData.status = 'completed';
     logData.modelResults = apiResponse.results.map((result: any) => ({
@@ -230,12 +251,17 @@ export async function processAttemptFile(filePath: string): Promise<void> {
     });
 
   } catch (error: any) {
-    // 4. Result Processing - Error
+    // 5. Result Processing - Error
     logData.status = 'failed';
     logData.error = error.message;
     logData.retryCount = error.retryCount || 0;
 
     console.error(`[Hook] Failed to process ${attemptId}:`, error.message);
+
+    // Update idempotency status to error
+    if (lockAcquired) {
+      await idempotencyManager.updateStatus(attemptId, AttemptStatus.ERROR);
+    }
 
     if (attemptId) {
       try {
@@ -253,13 +279,22 @@ export async function processAttemptFile(filePath: string): Promise<void> {
       }
     }
   } finally {
-    // 5. Comprehensive Logging
+    // 6. Release Lock and Comprehensive Logging
+    if (lockAcquired) {
+      try {
+        await idempotencyManager.releaseLock(attemptId);
+      } catch (lockError) {
+        console.error(`[Hook] Failed to release lock for ${attemptId}:`, lockError);
+      }
+    }
+
     const processingTime = Date.now() - startTime;
     logData.processingTimeMs = processingTime;
 
     console.log(`[Hook] Completed processing ${attemptId || 'unknown'}:`, {
       status: logData.status,
       processingTime: `${processingTime}ms`,
+      lockAcquired,
       ...logData
     });
   }

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import ErrorBoundary from '@/components/ErrorBoundary'
+import GlobalNav from '@/components/GlobalNav'
 
 export const metadata: Metadata = {
   title: 'Prompt Practice App',
@@ -28,13 +29,9 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body>
-        {/* Skip link for accessibility */}
-        <a href="#main-content" className="skip-link">
-          Skip to main content
-        </a>
-        
         <ErrorBoundary>
           <div id="root">
+            <GlobalNav />
             <main id="main-content" role="main">
               {children}
             </main>

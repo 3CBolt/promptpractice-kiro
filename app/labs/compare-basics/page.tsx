@@ -17,6 +17,7 @@ import {
   VALIDATION_LIMITS,
   detectPromptInjection 
 } from '@/lib/validation';
+import { tokens, getFocusBoxShadow } from '@/styles/tokens';
 
 export default function CompareBasicsLab() {
   const [userPrompt, setUserPrompt] = useState('');
@@ -230,7 +231,16 @@ export default function CompareBasicsLab() {
       <div className="space-y-6">
         {/* Model Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">
+          <label 
+            className="block text-sm font-medium text-gray-700 mb-3"
+            style={{
+              display: 'block',
+              fontSize: tokens.typography.fontSize.sm,
+              fontWeight: tokens.typography.fontWeight.medium,
+              color: tokens.colors.text.primary,
+              marginBottom: tokens.spacing[3],
+            }}
+          >
             Select Models (2-3 models)
           </label>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -250,6 +260,42 @@ export default function CompareBasicsLab() {
                       ? 'border-gray-300 bg-white text-gray-900 hover:border-gray-400'
                       : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
                   }`}
+                  style={{
+                    padding: tokens.spacing[4],
+                    border: `1px solid ${
+                      isSelected ? tokens.colors.primary[500] :
+                      canSelect ? tokens.colors.border.light :
+                      tokens.colors.border.light
+                    }`,
+                    borderRadius: tokens.borderRadius.lg,
+                    textAlign: 'left' as const,
+                    transition: `all ${tokens.animation.duration.normal} ${tokens.animation.easing.inOut}`,
+                    backgroundColor: isSelected ? tokens.colors.primary[50] :
+                                   canSelect ? tokens.colors.background.primary :
+                                   tokens.colors.background.secondary,
+                    color: isSelected ? tokens.colors.primary[900] :
+                           canSelect ? tokens.colors.text.primary :
+                           tokens.colors.text.muted,
+                    cursor: (!canSelect || isSubmitting || evaluationStatus.status === 'processing') ? 'not-allowed' : 'pointer',
+                    outline: 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (canSelect && !isSubmitting && evaluationStatus.status !== 'processing') {
+                      e.currentTarget.style.borderColor = tokens.colors.border.dark;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected) {
+                      e.currentTarget.style.borderColor = canSelect ? tokens.colors.border.light : tokens.colors.border.light;
+                    }
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.outline = `${tokens.focus.ring.width} ${tokens.focus.ring.style} ${tokens.focus.ring.color}`;
+                    e.currentTarget.style.outlineOffset = tokens.focus.ring.offset;
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.outline = 'none';
+                  }}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium">{model.name}</h3>
@@ -277,7 +323,17 @@ export default function CompareBasicsLab() {
 
         {/* User Prompt Input */}
         <div>
-          <label htmlFor="user-prompt" className="form-label">
+          <label 
+            htmlFor="user-prompt" 
+            className="form-label"
+            style={{
+              display: 'inline-block',
+              marginBottom: tokens.spacing[2],
+              fontWeight: tokens.typography.fontWeight.medium,
+              color: tokens.colors.text.primary,
+              fontSize: tokens.typography.fontSize.sm,
+            }}
+          >
             Your Prompt
           </label>
           <textarea
@@ -290,6 +346,29 @@ export default function CompareBasicsLab() {
             className="form-control"
             disabled={isSubmitting || evaluationStatus.status === 'processing'}
             aria-describedby="prompt-help prompt-counter"
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: tokens.spacing[3],
+              fontSize: tokens.typography.fontSize.sm,
+              lineHeight: tokens.typography.lineHeight.normal,
+              color: tokens.colors.text.secondary,
+              backgroundColor: tokens.colors.background.primary,
+              border: `1px solid ${tokens.colors.border.medium}`,
+              borderRadius: tokens.borderRadius.md,
+              transition: `border-color ${tokens.animation.duration.fast} ${tokens.animation.easing.inOut}, box-shadow ${tokens.animation.duration.fast} ${tokens.animation.easing.inOut}`,
+              outline: 'none',
+              resize: 'vertical' as const,
+              fontFamily: tokens.typography.fontFamily.sans.join(', '),
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = tokens.colors.border.focus;
+              e.currentTarget.style.boxShadow = getFocusBoxShadow('primary');
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = tokens.colors.border.medium;
+              e.currentTarget.style.boxShadow = 'none';
+            }}
           />
           <div className="mt-1 flex justify-between text-sm text-gray-500">
             <span id="prompt-help">Enter a prompt to test across the selected models</span>
@@ -459,3 +538,72 @@ export default function CompareBasicsLab() {
                         </div>
                       )}
                     </div>
+
+                    {/* Model Response */}
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Response:</h4>
+                      <div className="bg-white rounded-md p-3 text-sm text-gray-900 whitespace-pre-wrap border min-h-[120px]">
+                        {result.text}
+                      </div>
+                    </div>
+
+                    {/* Improvement Notes */}
+                    {result.notes && (
+                      <div className="bg-blue-50 rounded-md p-3 border border-blue-200">
+                        <h4 className="text-sm font-medium text-blue-800 mb-1">Suggestions:</h4>
+                        <p className="text-sm text-blue-700">{result.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Comparison Metrics Summary */}
+            {evaluationStatus.evaluation.perModelResults.length > 1 && (
+              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Comparison Summary</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-500">Best Score:</span>
+                    <div className="font-medium">
+                      {Math.max(...evaluationStatus.evaluation.perModelResults.map(r => r.score || 0))}/10
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Avg Latency:</span>
+                    <div className="font-medium">
+                      {Math.round(evaluationStatus.evaluation.perModelResults.reduce((sum, r) => sum + r.latencyMs, 0) / evaluationStatus.evaluation.perModelResults.length)}ms
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Models Tested:</span>
+                    <div className="font-medium">{evaluationStatus.evaluation.perModelResults.length}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Sources:</span>
+                    <div className="font-medium">
+                      {Array.from(new Set(evaluationStatus.evaluation.perModelResults.map(r => r.source))).map(source => 
+                        getSourceBadge(source).split(' ')[0]
+                      ).join(' ')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Navigation */}
+      <div className="mt-8 pt-6 border-t border-gray-200">
+        <a
+          href="/"
+          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+        >
+          ← Back to Home
+        </a>
+      </div>
+    </div>
+  );
+}

@@ -115,4 +115,41 @@ export default function OfflineModeIndicator({
               📦 Sample Mode Active
             </h3>
           </div>
-          <p className={`text-sm mt-1 ${getTextColor()} opacity-9
+          <p className={`text-sm mt-1 ${getTextColor()} opacity-90`}>
+            {getReasonMessage()}
+          </p>
+          
+          {reason === 'no-api-key' && (
+            <div className={`mt-2 text-xs ${getTextColor()} opacity-75`}>
+              <p>To enable live AI models, add your Hugging Face API key to the environment variables.</p>
+            </div>
+          )}
+          
+          {reason === 'rate-limited' && (
+            <div className={`mt-2 text-xs ${getTextColor()} opacity-75`}>
+              <p>Free tier limit: 1000 requests/hour. Consider upgrading for higher limits.</p>
+              {countdown > 0 && (
+                <p className="mt-1">Rate limit resets in: {Math.floor(countdown / 60)}m {countdown % 60}s</p>
+              )}
+            </div>
+          )}
+
+          {(reason === 'network-error' || reason === 'api-error') && onRetry && (
+            <div className="mt-3">
+              <button
+                onClick={onRetry}
+                disabled={retryDisabled}
+                className={`text-sm px-3 py-1 rounded-md focus:outline-none focus:ring-2 ${
+                  reason === 'network-error' ? 'bg-red-100 text-red-800 hover:bg-red-200 focus:ring-red-500' :
+                  'bg-red-100 text-red-800 hover:bg-red-200 focus:ring-red-500'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                Retry Connection
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

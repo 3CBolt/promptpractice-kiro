@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { ModelProvider } from '@/types';
 import { MODEL_REGISTRY, getRateLimitStatus } from '@/lib/models/providers';
 import { useEvaluationStatus } from '@/lib/hooks/useEvaluationStatus';
-import { ErrorBanner, StatusIndicator, OfflineModeIndicator } from '@/components';
+import { ErrorBanner, StatusIndicator, OfflineModeIndicator, ModelPicker } from '@/components';
+import OnboardingModal from '@/components/OnboardingModal';
 import { 
   getOfflineReason, 
   retryApiCall,
@@ -17,6 +18,14 @@ import {
   VALIDATION_LIMITS,
   detectPromptInjection 
 } from '@/lib/validation';
+import { 
+  getWebGPUManager, 
+  detectWebGPUSupport, 
+  getOnboardingComplete,
+  LoadingProgress,
+  WEBGPU_MODELS 
+} from '@/lib/models/webgpuModel';
+import { tokens, getFocusBoxShadow } from '@/styles/tokens';
 
 export default function PracticeBasicsLab() {
   const [userPrompt, setUserPrompt] = useState('');
@@ -31,6 +40,12 @@ export default function PracticeBasicsLab() {
     resetTime?: number;
   }>({ isActive: false });
 
+  // WebGPU and onboarding state
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [webgpuSupported, setWebgpuSupported] = useState<boolean | null>(null);
+  const [loadingProgress, setLoadingProgress] = useState<LoadingProgress | null>(null);
+  const [useWebGPU, setUseWebGPU] = useState(true);
+
   // Use the evaluation status hook
   const evaluationStatus = useEvaluationStatus(currentAttemptId, {
     pollInterval: 2000,
@@ -38,37 +53,71 @@ export default function PracticeBasicsLab() {
     timeoutMs: 60000
   });
 
-  // Get available models (prefer hosted, fallback to sample)
-  const availableModels = MODEL_REGISTRY.filter(model => 
-    model.source === 'hosted' || model.source === 'sample'
-  );
+  // Get available models based on WebGPU preference
+  const availableModels = useWebGPU 
+    ? WEBGPU_MODELS.map(model => ({
+        id: model.id,
+        name: model.name,
+        source: 'local' as const,
+        maxTokens: 512
+      }))
+    : MODEL_REGISTRY.filter(model => 
+        model.source === 'hosted' || model.source === 'sample'
+      );
+
+  // Initialize WebGPU support detection and onboarding
+  useEffect(() => {
+    const initializeWebGPU = async () => {
+      const supported = await detectWebGPUSupport();
+      setWebgpuSupported(supported);
+      
+      // Show onboarding if first time and WebGPU is supported
+      if (!getOnboardingComplete() && supported) {
+        setShowOnboarding(true);
+      }
+      
+      // If WebGPU not supported, fall back to traditional models
+      if (!supported) {
+        setUseWebGPU(false);
+      }
+    };
+    
+    initializeWebGPU();
+  }, []);
 
   // Set default model if none selected and check offline mode
   useEffect(() => {
     if (!selectedModel && availableModels.length > 0) {
-      // Prefer hosted models, fallback to sample
-      const hostedModel = availableModels.find(m => m.source === 'hosted');
-      const defaultModel = hostedModel || availableModels[0];
-      setSelectedModel(defaultModel.id);
+      if (useWebGPU) {
+        // Default to first WebGPU model
+        setSelectedModel(availableModels[0].id);
+      } else {
+        // Prefer hosted models, fallback to sample
+        const hostedModel = availableModels.find(m => m.source === 'hosted');
+        const defaultModel = hostedModel || availableModels[0];
+        setSelectedModel(defaultModel.id);
+      }
     }
 
-    // Check rate limit status for offline mode indicator
-    const rateLimitStatus = getRateLimitStatus();
-    if (rateLimitStatus.isLimited) {
-      setOfflineMode({
-        isActive: true,
-        reason: 'rate-limited',
-        resetTime: rateLimitStatus.resetTime
-      });
-    } else if (!process.env.NEXT_PUBLIC_ENABLE_HOSTED_MODELS) {
-      setOfflineMode({
-        isActive: true,
-        reason: 'no-api-key'
-      });
-    } else {
-      setOfflineMode({ isActive: false });
+    // Check rate limit status for offline mode indicator (only for non-WebGPU)
+    if (!useWebGPU) {
+      const rateLimitStatus = getRateLimitStatus();
+      if (rateLimitStatus.isLimited) {
+        setOfflineMode({
+          isActive: true,
+          reason: 'rate-limited',
+          resetTime: rateLimitStatus.resetTime
+        });
+      } else if (!process.env.NEXT_PUBLIC_ENABLE_HOSTED_MODELS) {
+        setOfflineMode({
+          isActive: true,
+          reason: 'no-api-key'
+        });
+      } else {
+        setOfflineMode({ isActive: false });
+      }
     }
-  }, [selectedModel, availableModels]);
+  }, [selectedModel, availableModels, useWebGPU]);
 
   // Update offline mode based on errors
   useEffect(() => {
@@ -181,6 +230,34 @@ export default function PracticeBasicsLab() {
     setSubmitError(null);
   };
 
+  // WebGPU model handling
+  const handleWebGPUModelSelect = async (modelId: string) => {
+    setSelectedModel(modelId);
+    
+    const manager = getWebGPUManager();
+    manager.setProgressCallback(setLoadingProgress);
+    
+    try {
+      await manager.loadModel(modelId);
+    } catch (error) {
+      console.error('Failed to load WebGPU model:', error);
+      // Model will fall back to demo mode automatically
+    }
+  };
+
+  const handleStartLab = () => {
+    setShowOnboarding(false);
+    
+    // If we have a selected model, start loading it
+    if (selectedModel && useWebGPU) {
+      handleWebGPUModelSelect(selectedModel);
+    }
+  };
+
+  const handleCloseOnboarding = () => {
+    setShowOnboarding(false);
+  };
+
   const getSourceBadge = (source: ModelProvider['source']) => {
     switch (source) {
       case 'hosted':
@@ -197,46 +274,110 @@ export default function PracticeBasicsLab() {
   const selectedModelInfo = availableModels.find(m => m.id === selectedModel);
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Practice Lab</h1>
-        <p className="text-gray-600">
-          Test your prompts against a single model and receive detailed feedback on clarity and completeness.
-        </p>
-      </div>
+    <>
+      {/* Onboarding Modal */}
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={handleCloseOnboarding}
+        onStartLab={handleStartLab}
+        loadingProgress={loadingProgress || undefined}
+      />
+
+      <div className="max-w-4xl mx-auto p-6">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Practice Lab</h1>
+          <p className="text-gray-600">
+            Test your prompts against a single model and receive detailed feedback on clarity and completeness.
+          </p>
+        </div>
 
       {/* Lab Interface */}
       <div className="space-y-6">
         {/* Model Selection */}
         <div>
-          <label htmlFor="model-select" className="form-label">
-            Select Model
-          </label>
-          <select
-            id="model-select"
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="form-control"
-            disabled={isSubmitting || evaluationStatus.status === 'processing'}
-            aria-describedby="model-info"
-          >
-            {availableModels.map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.name} {getSourceBadge(model.source)}
-              </option>
-            ))}
-          </select>
-          {selectedModelInfo && (
-            <p id="model-info" className="mt-1 text-sm text-gray-500">
-              Max tokens: {selectedModelInfo.maxTokens} • Source: {getSourceBadge(selectedModelInfo.source)}
-            </p>
+          {useWebGPU ? (
+            <ModelPicker
+              selectedModels={selectedModel ? [selectedModel] : []}
+              onSelectionChange={(models) => setSelectedModel(models[0] || '')}
+              maxSelection={1}
+              showWebGPUModels={true}
+              onWebGPUModelSelect={handleWebGPUModelSelect}
+              webgpuSupported={webgpuSupported || false}
+              disabled={isSubmitting || evaluationStatus.status === 'processing'}
+            />
+          ) : (
+            <>
+              <label 
+                htmlFor="model-select" 
+                className="form-label"
+                style={{
+                  display: 'inline-block',
+                  marginBottom: tokens.spacing[2],
+                  fontWeight: tokens.typography.fontWeight.medium,
+                  color: tokens.colors.text.primary,
+                  fontSize: tokens.typography.fontSize.sm,
+                }}
+              >
+                Select Model
+              </label>
+              <select
+                id="model-select"
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="form-control"
+                disabled={isSubmitting || evaluationStatus.status === 'processing'}
+                aria-describedby="model-info"
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: tokens.spacing[3],
+                  fontSize: tokens.typography.fontSize.sm,
+                  lineHeight: tokens.typography.lineHeight.normal,
+                  color: tokens.colors.text.secondary,
+                  backgroundColor: tokens.colors.background.primary,
+                  border: `1px solid ${tokens.colors.border.medium}`,
+                  borderRadius: tokens.borderRadius.md,
+                  transition: `border-color ${tokens.animation.duration.fast} ${tokens.animation.easing.inOut}, box-shadow ${tokens.animation.duration.fast} ${tokens.animation.easing.inOut}`,
+                  outline: 'none',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = tokens.colors.border.focus;
+                  e.currentTarget.style.boxShadow = getFocusBoxShadow('primary');
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = tokens.colors.border.medium;
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                {availableModels.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.name} {getSourceBadge(model.source)}
+                  </option>
+                ))}
+              </select>
+              {selectedModelInfo && (
+                <p id="model-info" className="mt-1 text-sm text-gray-500">
+                  Max tokens: {selectedModelInfo.maxTokens} • Source: {getSourceBadge(selectedModelInfo.source)}
+                </p>
+              )}
+            </>
           )}
         </div>
 
         {/* User Prompt Input */}
         <div>
-          <label htmlFor="user-prompt" className="form-label">
+          <label 
+            htmlFor="user-prompt" 
+            className="form-label"
+            style={{
+              display: 'inline-block',
+              marginBottom: tokens.spacing[2],
+              fontWeight: tokens.typography.fontWeight.medium,
+              color: tokens.colors.text.primary,
+              fontSize: tokens.typography.fontSize.sm,
+            }}
+          >
             Your Prompt
           </label>
           <textarea
@@ -249,6 +390,29 @@ export default function PracticeBasicsLab() {
             className="form-control"
             disabled={isSubmitting || evaluationStatus.status === 'processing'}
             aria-describedby="prompt-help prompt-counter"
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: tokens.spacing[3],
+              fontSize: tokens.typography.fontSize.sm,
+              lineHeight: tokens.typography.lineHeight.normal,
+              color: tokens.colors.text.secondary,
+              backgroundColor: tokens.colors.background.primary,
+              border: `1px solid ${tokens.colors.border.medium}`,
+              borderRadius: tokens.borderRadius.md,
+              transition: `border-color ${tokens.animation.duration.fast} ${tokens.animation.easing.inOut}, box-shadow ${tokens.animation.duration.fast} ${tokens.animation.easing.inOut}`,
+              outline: 'none',
+              resize: 'vertical' as const,
+              fontFamily: tokens.typography.fontFamily.sans.join(', '),
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = tokens.colors.border.focus;
+              e.currentTarget.style.boxShadow = getFocusBoxShadow('primary');
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = tokens.colors.border.medium;
+              e.currentTarget.style.boxShadow = 'none';
+            }}
           />
           <div className="mt-1 flex justify-between text-sm text-gray-500">
             <span id="prompt-help">Enter a prompt to test against the selected model</span>
@@ -357,4 +521,91 @@ export default function PracticeBasicsLab() {
         )}
 
         {/* Evaluation Error */}
-        {evaluationStat
+        {evaluationStatus.status === 'failed' && (
+          <ErrorBanner
+            type="error"
+            title="Evaluation Failed"
+            message={evaluationStatus.error?.message || 'An error occurred while processing your prompt.'}
+            onRetry={evaluationStatus.canRetry ? handleRetry : undefined}
+            retryLabel="Retry Evaluation"
+            errorCode={evaluationStatus.error?.code}
+            timestamp={evaluationStatus.error?.timestamp}
+            showDetails={true}
+            details={`Attempt ID: ${currentAttemptId}\nModel: ${selectedModel}\nRetry count: ${evaluationStatus.retryCount}`}
+          />
+        )}
+
+        {/* Results Display */}
+        {evaluationStatus.status === 'completed' && evaluationStatus.evaluation && (
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-900">Results</h2>
+            </div>
+            
+            {evaluationStatus.evaluation.perModelResults.map((result, index) => (
+              <div key={index} className="px-6 py-4">
+                {/* Model Info */}
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-md font-medium text-gray-900">
+                      {availableModels.find(m => m.id === result.modelId)?.name || result.modelId}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {getSourceBadge(result.source)} • {result.latencyMs}ms
+                      {result.usageTokens && ` • ${result.usageTokens} tokens`}
+                    </p>
+                  </div>
+                  
+                  {/* Score Badge */}
+                  {result.score !== undefined && (
+                    <div className="text-right">
+                      <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                        result.score >= 8 ? 'bg-green-100 text-green-800' :
+                        result.score >= 6 ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        Score: {result.score}/10
+                      </div>
+                      {result.breakdown && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Clarity: {result.breakdown.clarity}/5 • Completeness: {result.breakdown.completeness}/5
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Model Response */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Response:</h4>
+                  <div className="bg-gray-50 rounded-md p-3 text-sm text-gray-900 whitespace-pre-wrap">
+                    {result.text}
+                  </div>
+                </div>
+
+                {/* Improvement Notes */}
+                {result.notes && (
+                  <div className="bg-blue-50 rounded-md p-3">
+                    <h4 className="text-sm font-medium text-blue-800 mb-1">Improvement Suggestions:</h4>
+                    <p className="text-sm text-blue-700">{result.notes}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Navigation */}
+      <div className="mt-8 pt-6 border-t border-gray-200">
+        <a
+          href="/"
+          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+        >
+          ← Back to Home
+        </a>
+      </div>
+    </div>
+    </>
+  );
+}

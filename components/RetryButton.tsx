@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { tokens, getFocusRing, getFocusBoxShadow } from '@/styles/tokens';
 
 export interface RetryButtonProps {
   onRetry: () => void;
@@ -44,22 +45,63 @@ export default function RetryButton({
   const getVariantStyles = () => {
     switch (variant) {
       case 'primary':
-        return 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500';
+        return {
+          backgroundColor: tokens.colors.primary[600],
+          color: tokens.colors.text.inverse,
+          borderColor: tokens.colors.primary[600],
+        };
       case 'secondary':
-        return 'bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-gray-500';
+        return {
+          backgroundColor: tokens.colors.neutral[100],
+          color: tokens.colors.text.primary,
+          borderColor: tokens.colors.border.medium,
+        };
       case 'danger':
-        return 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500';
+        return {
+          backgroundColor: tokens.colors.error[600],
+          color: tokens.colors.text.inverse,
+          borderColor: tokens.colors.error[600],
+        };
+    }
+  };
+
+  const getHoverStyles = () => {
+    switch (variant) {
+      case 'primary':
+        return {
+          backgroundColor: tokens.colors.primary[700],
+          borderColor: tokens.colors.primary[700],
+        };
+      case 'secondary':
+        return {
+          backgroundColor: tokens.colors.neutral[200],
+          borderColor: tokens.colors.border.dark,
+        };
+      case 'danger':
+        return {
+          backgroundColor: tokens.colors.error[700],
+          borderColor: tokens.colors.error[700],
+        };
     }
   };
 
   const getSizeStyles = () => {
     switch (size) {
       case 'sm':
-        return 'px-2 py-1 text-xs';
+        return {
+          padding: `${tokens.spacing[1]} ${tokens.spacing[2]}`,
+          fontSize: tokens.typography.fontSize.xs,
+        };
       case 'md':
-        return 'px-3 py-1.5 text-sm';
+        return {
+          padding: `${tokens.spacing[1.5]} ${tokens.spacing[3]}`,
+          fontSize: tokens.typography.fontSize.sm,
+        };
       case 'lg':
-        return 'px-4 py-2 text-base';
+        return {
+          padding: `${tokens.spacing[2]} ${tokens.spacing[4]}`,
+          fontSize: tokens.typography.fontSize.base,
+        };
     }
   };
 
@@ -68,19 +110,70 @@ export default function RetryButton({
     ? `${label} (${internalCountdown}s)`
     : label;
 
+  const baseStyles = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: tokens.typography.fontWeight.medium,
+    lineHeight: tokens.typography.lineHeight.tight,
+    borderRadius: tokens.borderRadius.md,
+    border: '1px solid transparent',
+    cursor: isDisabled ? 'not-allowed' : 'pointer',
+    transition: `all ${tokens.animation.duration.normal} ${tokens.animation.easing.inOut}`,
+    textDecoration: 'none',
+    position: 'relative' as const,
+    overflow: 'hidden' as const,
+    outline: 'none',
+    opacity: isDisabled ? 0.5 : 1,
+    ...getVariantStyles(),
+    ...getSizeStyles(),
+  };
+
   return (
     <button
       onClick={onRetry}
       disabled={isDisabled}
-      className={`
-        ${getVariantStyles()}
-        ${getSizeStyles()}
-        rounded-md font-medium
-        focus:outline-none focus:ring-2 focus:ring-offset-2
-        disabled:opacity-50 disabled:cursor-not-allowed
-        transition-colors duration-200
-        ${className}
-      `}
+      className={className}
+      style={baseStyles}
+      onMouseEnter={(e) => {
+        if (!isDisabled) {
+          Object.assign(e.currentTarget.style, getHoverStyles());
+          e.currentTarget.style.transform = 'translateY(-1px)';
+          e.currentTarget.style.boxShadow = tokens.boxShadow.md;
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isDisabled) {
+          Object.assign(e.currentTarget.style, getVariantStyles());
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = 'none';
+        }
+      }}
+      onFocus={(e) => {
+        const focusVariant = variant === 'primary' ? 'primary' : 
+                           variant === 'danger' ? 'error' : 'primary';
+        e.currentTarget.style.outline = `${tokens.focus.ring.width} ${tokens.focus.ring.style} ${
+          focusVariant === 'primary' ? tokens.focus.ring.color :
+          focusVariant === 'error' ? tokens.colors.error[600] :
+          tokens.focus.ring.color
+        }`;
+        e.currentTarget.style.outlineOffset = tokens.focus.ring.offset;
+      }}
+      onBlur={(e) => {
+        e.currentTarget.style.outline = 'none';
+      }}
+      onMouseDown={(e) => {
+        if (!isDisabled) {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = tokens.boxShadow.sm;
+        }
+      }}
+      onMouseUp={(e) => {
+        if (!isDisabled) {
+          e.currentTarget.style.transform = 'translateY(-1px)';
+          e.currentTarget.style.boxShadow = tokens.boxShadow.md;
+        }
+      }}
     >
       {displayLabel}
     </button>
