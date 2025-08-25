@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { tokens } from '@/styles/tokens';
 
 export interface ErrorBannerProps {
   type: 'error' | 'warning' | 'info';
@@ -61,46 +62,46 @@ export default function ErrorBanner({
       case 'error':
         return {
           container: {
-            backgroundColor: 'var(--color-error-50, #fef2f2)',
-            borderColor: 'var(--color-error-200, #fecaca)',
-            color: 'var(--color-error-800, #991b1b)',
+            backgroundColor: tokens.colors.error[50],
+            borderColor: tokens.colors.error[200],
+            color: tokens.colors.error[800],
           },
           icon: {
-            color: 'var(--color-error-400, #f87171)',
+            color: tokens.colors.error[400],
           },
           button: {
-            backgroundColor: 'var(--color-error-100, #fee2e2)',
-            color: 'var(--color-error-800, #991b1b)',
+            backgroundColor: tokens.colors.error[100],
+            color: tokens.colors.error[800],
           }
         };
       case 'warning':
         return {
           container: {
-            backgroundColor: 'var(--color-warning-50, #fffbeb)',
-            borderColor: 'var(--color-warning-200, #fde68a)',
-            color: 'var(--color-warning-800, #92400e)',
+            backgroundColor: tokens.colors.warning[50],
+            borderColor: tokens.colors.warning[200],
+            color: tokens.colors.warning[800],
           },
           icon: {
-            color: 'var(--color-warning-400, #fbbf24)',
+            color: tokens.colors.warning[400],
           },
           button: {
-            backgroundColor: 'var(--color-warning-100, #fef3c7)',
-            color: 'var(--color-warning-800, #92400e)',
+            backgroundColor: tokens.colors.warning[100],
+            color: tokens.colors.warning[800],
           }
         };
       case 'info':
         return {
           container: {
-            backgroundColor: 'var(--color-primary-50, #eff6ff)',
-            borderColor: 'var(--color-primary-200, #bfdbfe)',
-            color: 'var(--color-primary-800, #1e40af)',
+            backgroundColor: tokens.colors.primary[50],
+            borderColor: tokens.colors.primary[200],
+            color: tokens.colors.primary[800],
           },
           icon: {
-            color: 'var(--color-primary-400, #60a5fa)',
+            color: tokens.colors.primary[400],
           },
           button: {
-            backgroundColor: 'var(--color-primary-100, #dbeafe)',
-            color: 'var(--color-primary-800, #1e40af)',
+            backgroundColor: tokens.colors.primary[100],
+            color: tokens.colors.primary[800],
           }
         };
     }
@@ -136,8 +137,8 @@ export default function ErrorBanner({
       className={className}
       style={{
         border: '1px solid',
-        borderRadius: 'var(--border-radius-md, 0.375rem)',
-        padding: 'var(--spacing-4, 1rem)',
+        borderRadius: tokens.borderRadius.md,
+        padding: tokens.spacing[4],
         ...styles.container
       }}
     >
@@ -147,16 +148,18 @@ export default function ErrorBanner({
             {getIcon()}
           </div>
         </div>
-        <div style={{ marginLeft: 'var(--spacing-3, 0.75rem)', flex: 1 }}>
+        <div style={{ marginLeft: tokens.spacing[3], flex: 1 }}>
           <h3 style={{ 
-            fontSize: 'var(--font-size-sm, 0.875rem)', 
-            fontWeight: 'var(--font-weight-medium, 500)' 
+            fontSize: tokens.typography.fontSize.sm, 
+            fontWeight: tokens.typography.fontWeight.medium,
+            margin: 0,
           }}>
             {title}
           </h3>
           <p style={{ 
-            fontSize: 'var(--font-size-sm, 0.875rem)', 
-            marginTop: 'var(--spacing-1, 0.25rem)' 
+            fontSize: tokens.typography.fontSize.sm, 
+            marginTop: tokens.spacing[1],
+            margin: `${tokens.spacing[1]} 0 0 0`,
           }}>
             {message}
           </p>
@@ -164,35 +167,37 @@ export default function ErrorBanner({
           {/* Error details */}
           {(errorCode || timestamp) && (
             <div style={{ 
-              marginTop: 'var(--spacing-2, 0.5rem)', 
-              fontSize: 'var(--font-size-xs, 0.75rem)', 
+              marginTop: tokens.spacing[2], 
+              fontSize: tokens.typography.fontSize.xs, 
               opacity: 0.75 
             }}>
               {errorCode && <span>Error Code: {errorCode}</span>}
-              {errorCode && timestamp && <span style={{ margin: '0 var(--spacing-2, 0.5rem)' }}>•</span>}
+              {errorCode && timestamp && <span style={{ margin: `0 ${tokens.spacing[2]}` }}>•</span>}
               {timestamp && <span>Time: {formatTimestamp(timestamp)}</span>}
             </div>
           )}
 
           {/* Expandable details */}
           {details && (
-            <div style={{ marginTop: 'var(--spacing-2, 0.5rem)' }}>
+            <div style={{ marginTop: tokens.spacing[2] }}>
               <button
                 onClick={() => setShowDetailsExpanded(!showDetailsExpanded)}
                 style={{
-                  fontSize: 'var(--font-size-xs, 0.75rem)',
+                  fontSize: tokens.typography.fontSize.xs,
                   textDecoration: 'underline',
                   opacity: 0.75,
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
                   outline: 'none',
+                  color: 'inherit',
+                  transition: `opacity ${tokens.animation.duration.fast} ${tokens.animation.easing.inOut}`,
                 }}
                 onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
                 onMouseLeave={(e) => e.currentTarget.style.opacity = '0.75'}
                 onFocus={(e) => {
-                  e.currentTarget.style.outline = `var(--focus-ring-width, 2px) var(--focus-ring-style, solid) var(--focus-ring-color, #2563eb)`;
-                  e.currentTarget.style.outlineOffset = 'var(--focus-ring-offset, 2px)';
+                  e.currentTarget.style.outline = `${tokens.focus.ring.width} ${tokens.focus.ring.style} ${tokens.focus.ring.color}`;
+                  e.currentTarget.style.outlineOffset = tokens.focus.ring.offset;
                 }}
                 onBlur={(e) => e.currentTarget.style.outline = 'none'}
               >
@@ -200,12 +205,12 @@ export default function ErrorBanner({
               </button>
               {showDetailsExpanded && (
                 <div style={{
-                  marginTop: 'var(--spacing-2, 0.5rem)',
-                  padding: 'var(--spacing-2, 0.5rem)',
+                  marginTop: tokens.spacing[2],
+                  padding: tokens.spacing[2],
                   backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                  borderRadius: 'var(--border-radius-base, 0.25rem)',
-                  fontSize: 'var(--font-size-xs, 0.75rem)',
-                  fontFamily: 'monospace',
+                  borderRadius: tokens.borderRadius.base,
+                  fontSize: tokens.typography.fontSize.xs,
+                  fontFamily: tokens.typography.fontFamily.mono.join(', '),
                   whiteSpace: 'pre-wrap'
                 }}>
                   {details}
@@ -216,29 +221,30 @@ export default function ErrorBanner({
 
           {(onRetry || dismissible) && (
             <div style={{ 
-              marginTop: 'var(--spacing-3, 0.75rem)', 
+              marginTop: tokens.spacing[3], 
               display: 'flex', 
               alignItems: 'center', 
-              gap: 'var(--spacing-2, 0.5rem)' 
+              gap: tokens.spacing[2] 
             }}>
               {onRetry && (
                 <button
                   onClick={onRetry}
                   disabled={retryDisabled}
                   style={{
-                    fontSize: 'var(--font-size-sm, 0.875rem)',
-                    padding: 'var(--spacing-1, 0.25rem) var(--spacing-3, 0.75rem)',
-                    borderRadius: 'var(--border-radius-md, 0.375rem)',
+                    fontSize: tokens.typography.fontSize.sm,
+                    fontWeight: tokens.typography.fontWeight.medium,
+                    padding: `${tokens.spacing[1]} ${tokens.spacing[3]}`,
+                    borderRadius: tokens.borderRadius.md,
                     border: 'none',
                     cursor: retryDisabled ? 'not-allowed' : 'pointer',
                     opacity: retryDisabled ? 0.5 : 1,
                     outline: 'none',
-                    transition: 'all var(--animation-duration-fast, 150ms) ease',
+                    transition: `all ${tokens.animation.duration.fast} ${tokens.animation.easing.inOut}`,
                     ...styles.button
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.outline = `var(--focus-ring-width, 2px) var(--focus-ring-style, solid) var(--focus-ring-color, #2563eb)`;
-                    e.currentTarget.style.outlineOffset = 'var(--focus-ring-offset, 2px)';
+                    e.currentTarget.style.outline = `${tokens.focus.ring.width} ${tokens.focus.ring.style} ${tokens.focus.ring.color}`;
+                    e.currentTarget.style.outlineOffset = tokens.focus.ring.offset;
                   }}
                   onBlur={(e) => e.currentTarget.style.outline = 'none'}
                 >
@@ -252,21 +258,21 @@ export default function ErrorBanner({
                 <button
                   onClick={handleDismiss}
                   style={{
-                    fontSize: 'var(--font-size-sm, 0.875rem)',
-                    color: 'var(--color-neutral-600, #4b5563)',
+                    fontSize: tokens.typography.fontSize.sm,
+                    color: tokens.colors.neutral[600],
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    padding: 'var(--spacing-2, 0.5rem) var(--spacing-1, 0.25rem)',
-                    borderRadius: 'var(--border-radius-md, 0.375rem)',
+                    padding: `${tokens.spacing[2]} ${tokens.spacing[1]}`,
+                    borderRadius: tokens.borderRadius.md,
                     outline: 'none',
-                    transition: 'color var(--animation-duration-fast, 150ms) ease'
+                    transition: `color ${tokens.animation.duration.fast} ${tokens.animation.easing.inOut}`
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-neutral-800, #1f2937)'}
-                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-neutral-600, #4b5563)'}
+                  onMouseEnter={(e) => e.currentTarget.style.color = tokens.colors.neutral[800]}
+                  onMouseLeave={(e) => e.currentTarget.style.color = tokens.colors.neutral[600]}
                   onFocus={(e) => {
-                    e.currentTarget.style.outline = `var(--focus-ring-width, 2px) var(--focus-ring-style, solid) var(--focus-ring-color, #2563eb)`;
-                    e.currentTarget.style.outlineOffset = 'var(--focus-ring-offset, 2px)';
+                    e.currentTarget.style.outline = `${tokens.focus.ring.width} ${tokens.focus.ring.style} ${tokens.focus.ring.color}`;
+                    e.currentTarget.style.outlineOffset = tokens.focus.ring.offset;
                   }}
                   onBlur={(e) => e.currentTarget.style.outline = 'none'}
                 >
@@ -278,25 +284,25 @@ export default function ErrorBanner({
         </div>
         
         {dismissible && (
-          <div style={{ marginLeft: 'auto', paddingLeft: 'var(--spacing-3, 0.75rem)' }}>
+          <div style={{ marginLeft: 'auto', paddingLeft: tokens.spacing[3] }}>
             <button
               onClick={handleDismiss}
               style={{
                 display: 'inline-flex',
-                borderRadius: 'var(--border-radius-md, 0.375rem)',
-                padding: 'var(--spacing-1-5, 0.375rem)',
+                borderRadius: tokens.borderRadius.md,
+                padding: tokens.spacing[1.5],
                 border: 'none',
                 background: 'none',
                 cursor: 'pointer',
                 outline: 'none',
-                transition: 'background-color var(--animation-duration-fast, 150ms) ease',
+                transition: `background-color ${tokens.animation.duration.fast} ${tokens.animation.easing.inOut}`,
                 ...styles.icon
               }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               onFocus={(e) => {
-                e.currentTarget.style.outline = `var(--focus-ring-width, 2px) var(--focus-ring-style, solid) var(--focus-ring-color, #2563eb)`;
-                e.currentTarget.style.outlineOffset = 'var(--focus-ring-offset, 2px)';
+                e.currentTarget.style.outline = `${tokens.focus.ring.width} ${tokens.focus.ring.style} ${tokens.focus.ring.color}`;
+                e.currentTarget.style.outlineOffset = tokens.focus.ring.offset;
               }}
               onBlur={(e) => e.currentTarget.style.outline = 'none'}
             >
@@ -313,7 +319,7 @@ export default function ErrorBanner({
               }}>
                 Dismiss
               </span>
-              <svg style={{ height: '1.25rem', width: '1.25rem' }} viewBox="0 0 20 20" fill="currentColor">
+              <svg style={{ height: tokens.spacing[5], width: tokens.spacing[5] }} viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
             </button>

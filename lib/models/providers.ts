@@ -1,4 +1,4 @@
-import { ModelProvider, ModelResult } from '@/types';
+import { ModelProvider, ModelResult, ModelSource } from '@/types';
 import { getLocalModelResult } from './localModel';
 import { WEBGPU_MODELS, getWebGPUManager } from './webgpuModel';
 
@@ -13,39 +13,39 @@ export const MODEL_REGISTRY: ModelProvider[] = [
   ...WEBGPU_MODELS.map(model => ({
     id: model.id,
     name: model.name,
-    source: 'local' as const,
+    source: ModelSource.LOCAL,
     maxTokens: 512
   })),
   // Hosted models (Hugging Face API)
   {
     id: 'llama3.1-8b',
     name: 'Llama 3.1 8B',
-    source: 'hosted',
+    source: ModelSource.HOSTED,
     maxTokens: 512
   },
   {
     id: 'mistral-7b',
     name: 'Mistral 7B',
-    source: 'hosted',
+    source: ModelSource.HOSTED,
     maxTokens: 512
   },
   // Local fallback models (always available)
   {
     id: 'local-stub',
     name: 'Local Stub',
-    source: 'sample',
+    source: ModelSource.SAMPLE,
     maxTokens: 512
   },
   {
     id: 'local-creative',
     name: 'Local Creative',
-    source: 'sample',
+    source: ModelSource.SAMPLE,
     maxTokens: 512
   },
   {
     id: 'local-analytical',
     name: 'Local Analytical',
-    source: 'sample',
+    source: ModelSource.SAMPLE,
     maxTokens: 512
   }
 ];
@@ -204,10 +204,10 @@ async function callHuggingFaceAPI(
     
     return {
       modelId,
-      text: text.trim(),
-      latencyMs,
-      usageTokens,
-      source: 'hosted'
+      response: text.trim(),
+      latency: latencyMs,
+      tokenCount: usageTokens,
+      source: ModelSource.HOSTED
     };
     
   } catch (error) {
@@ -271,21 +271,36 @@ export async function callModel(
         await manager.loadModel(modelId);
       } catch (error) {
         console.log(`WebGPU model ${modelId} failed to load, falling back to sample:`, error);
-        // Fallback to sample response
-        return getLocalModelResult('local-stub', prompt, systemPrompt);
+        // Fallback to sample response but mark it clearly
+        const result = await getLocalModelResult('local-stub', prompt, systemPrompt);
+        return {
+          ...result,
+          modelId,
+          source: ModelSource.SAMPLE // Clearly indicate this is fallback
+        };
       }
     }
     
     try {
-      return await manager.generateResponse(prompt, systemPrompt);
+      const result = await manager.generateResponse(prompt, systemPrompt);
+      // Ensure we mark WebGPU results as 'local' source
+      return {
+        ...result,
+        source: ModelSource.LOCAL
+      };
     } catch (error) {
       console.log(`WebGPU inference failed for ${modelId}, falling back to sample:`, error);
-      return getLocalModelResult('local-stub', prompt, systemPrompt);
+      const result = await getLocalModelResult('local-stub', prompt, systemPrompt);
+      return {
+        ...result,
+        modelId,
+        source: ModelSource.SAMPLE // Clearly indicate this is fallback
+      };
     }
   }
   
   // If it's a local model, call directly
-  if (provider.source === 'sample' || provider.source === 'local') {
+  if (provider.source === ModelSource.SAMPLE || provider.source === ModelSource.LOCAL) {
     return getLocalModelResult(modelId, prompt, systemPrompt);
   }
   
@@ -295,12 +310,19 @@ export async function callModel(
     if (isRateLimited()) {
       console.log(`Rate limited, falling back to local model for ${modelId}`);
       const fallbackId = getFallbackModelId(modelId);
-      return getLocalModelResult(fallbackId, prompt, systemPrompt);
+      const result = await getLocalModelResult(fallbackId, prompt, systemPrompt);
+      return {
+        ...result,
+        modelId, // Keep original model ID
+        source: ModelSource.SAMPLE // Indicate this is fallback data
+      };
     }
     
     try {
-      // Try Hugging Face API
-      return await callHuggingFaceAPI(modelId, prompt, systemPrompt, provider.maxTokens);
+      // Try Hugging Face API - this should provide real model responses
+      const result = await callHuggingFaceAPI(modelId, prompt, systemPrompt, provider.maxTokens);
+      console.log(`Successfully got real response from ${modelId}:`, result.response.substring(0, 100) + '...');
+      return result;
       
     } catch (error) {
       console.log(`API call failed for ${modelId}, falling back to local model:`, error);
@@ -313,7 +335,7 @@ export async function callModel(
       return {
         ...result,
         modelId, // Keep original model ID
-        source: 'sample' // Indicate this is fallback data
+        source: ModelSource.SAMPLE // Indicate this is fallback data
       };
     }
   }
@@ -379,4 +401,95 @@ export function getSourceBadge(result: ModelResult): string {
     default:
       return '❓ Unknown';
   }
+}
+
+/**
+ * Test model connectivity and response authenticity
+ */
+export async function testModelConnectivity(modelId: string): Promise<{
+  isConnected: boolean;
+  isAuthentic: boolean;
+  source: 'hosted' | 'sample' | 'local';
+  latency?: number;
+  error?: string;
+}> {
+  try {
+    const testPrompt = "Say exactly: 'Connection test successful'";
+    const result = await callModel(modelId, testPrompt);
+    
+    // Check if response is authentic (not a sample/stub response)
+    const isAuthentic = result.source === ModelSource.HOSTED || result.source === ModelSource.LOCAL;
+    const expectedResponse = result.response.toLowerCase().includes('connection test successful');
+    
+    return {
+      isConnected: true,
+      isAuthentic: isAuthentic && expectedResponse,
+      source: result.source,
+      latency: result.latency
+    };
+  } catch (error) {
+    return {
+      isConnected: false,
+      isAuthentic: false,
+      source: 'sample',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * Get model status for display in labs
+ */
+export function getModelStatus(modelId: string): {
+  isAvailable: boolean;
+  source: 'hosted' | 'sample' | 'local';
+  description: string;
+} {
+  const provider = getModelById(modelId);
+  if (!provider) {
+    return {
+      isAvailable: false,
+      source: 'sample',
+      description: 'Model not found'
+    };
+  }
+
+  if (provider.source === 'hosted') {
+    const hasApiKey = !!process.env.HUGGINGFACE_API_KEY;
+    const notRateLimited = !isRateLimited();
+    
+    if (hasApiKey && notRateLimited) {
+      return {
+        isAvailable: true,
+        source: 'hosted',
+        description: 'Real AI model via Hugging Face API'
+      };
+    } else if (!hasApiKey) {
+      return {
+        isAvailable: true,
+        source: 'sample',
+        description: 'Sample responses (no API key configured)'
+      };
+    } else {
+      return {
+        isAvailable: true,
+        source: 'sample',
+        description: 'Sample responses (rate limited)'
+      };
+    }
+  }
+
+  if (provider.source === 'local') {
+    return {
+      isAvailable: true,
+      source: 'local',
+      description: 'Browser-based AI model'
+    };
+  }
+
+  return {
+    isAvailable: true,
+    source: 'sample',
+    description: 'Sample responses for demonstration'
+  };
 }

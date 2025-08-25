@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ModelProvider } from '@/types';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { ModelProvider, AttemptStatus } from '@/types';
 import { MODEL_REGISTRY, getRateLimitStatus } from '@/lib/models/providers';
 import { useEvaluationStatus } from '@/lib/hooks/useEvaluationStatus';
 import { ErrorBanner, StatusIndicator, OfflineModeIndicator } from '@/components';
+import LabStepHeader, { LabStep } from '@/components/LabStepHeader';
 import { 
   getOfflineReason, 
   retryApiCall,
@@ -18,8 +21,15 @@ import {
   detectPromptInjection 
 } from '@/lib/validation';
 import { tokens, getFocusBoxShadow } from '@/styles/tokens';
+import { 
+  getStarterPrompts, 
+  getConceptDisplayName, 
+  StarterPrompt 
+} from '@/lib/starterPrompts';
+import { getModelStatus } from '@/lib/models/providers';
 
 export default function CompareBasicsLab() {
+  const searchParams = useSearchParams();
   const [userPrompt, setUserPrompt] = useState('');
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,6 +41,15 @@ export default function CompareBasicsLab() {
     reason?: 'no-api-key' | 'rate-limited' | 'network-error' | 'api-error';
     resetTime?: number;
   }>({ isActive: false });
+
+  // Guide context from URL parameters
+  const fromGuide = searchParams?.get('from') === 'guide';
+  const guideSlug = searchParams?.get('guide');
+  const guideConcept = searchParams?.get('concept');
+  const guideTitle = searchParams?.get('title');
+  const ctaType = searchParams?.get('cta'); // 'inline', 'tryit', or null
+  const [showStarterPrompts, setShowStarterPrompts] = useState(fromGuide); // Auto-show if from guide
+  const [selectedLevel, setSelectedLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
 
   // Use the evaluation status hook
   const evaluationStatus = useEvaluationStatus(currentAttemptId, {
@@ -91,6 +110,14 @@ export default function CompareBasicsLab() {
       }
     }
   }, [submitError]);
+
+  // Handle prefill parameter for revisiting attempts
+  useEffect(() => {
+    const prefillPrompt = searchParams?.get('prefill');
+    if (prefillPrompt) {
+      setUserPrompt(decodeURIComponent(prefillPrompt));
+    }
+  }, [searchParams]);
 
   const handleModelToggle = (modelId: string) => {
     setSelectedModels(prev => {
@@ -200,6 +227,15 @@ export default function CompareBasicsLab() {
     await handleSubmit();
   };
 
+  const handleStartOver = () => {
+    // Reset all state to start fresh
+    setUserPrompt('');
+    setCurrentAttemptId(null);
+    setSubmitError(null);
+    setValidationErrors([]);
+    evaluationStatus.reset();
+  };
+
   const handleDismissError = () => {
     setSubmitError(null);
   };
@@ -217,14 +253,182 @@ export default function CompareBasicsLab() {
     }
   };
 
+  // Determine current lab step and status
+  const getCurrentStep = (): LabStep => {
+    if (evaluationStatus.status === 'completed' || currentAttemptId) {
+      return 'feedback';
+    } else if (isSubmitting || evaluationStatus.status === 'processing') {
+      return 'submit';
+    } else {
+      return 'draft';
+    }
+  };
+
+  const getCurrentStatus = () => {
+    if (isSubmitting || evaluationStatus.status === 'processing') {
+      return 'processing';
+    } else if (evaluationStatus.status === 'completed') {
+      return 'completed';
+    } else if (evaluationStatus.status === 'failed' || submitError) {
+      return 'error';
+    } else if (evaluationStatus.status === 'timeout') {
+      return 'timeout';
+    } else {
+      return 'idle';
+    }
+  };
+
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Compare Lab</h1>
-        <p className="text-gray-600">
-          Compare your prompts across multiple models side-by-side to understand how different models respond to the same input.
-        </p>
+    <div 
+      className="max-w-6xl mx-auto safe-area-padding"
+      style={{
+        padding: `${tokens.mobile.padding.sm} ${tokens.mobile.padding.xs}`,
+      }}
+    >
+      {/* Lab Step Header */}
+      <LabStepHeader
+        currentStep={getCurrentStep()}
+        status={getCurrentStatus()}
+        labTitle="Compare Lab"
+        onStartOver={handleStartOver}
+        disabled={isSubmitting || evaluationStatus.isPolling}
+      />
+
+      {/* Guide Context Banner */}
+      {fromGuide && guideSlug && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <span className="text-blue-600 mr-2">📚</span>
+              <div>
+                <p className="text-sm font-medium text-blue-900">
+                  From Guide: {guideTitle || getConceptDisplayName(guideConcept || 'general')}
+                </p>
+                <p className="text-sm text-blue-700">
+                  Compare how different models handle the concepts you learned
+                </p>
+                {ctaType === 'tryit' && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    💡 The starter prompts below include examples from the guide
+                  </p>
+                )}
+              </div>
+            </div>
+            <Link
+              href={`/guides/${guideSlug}`}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+            >
+              ← Back to Guide
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Starter Prompts Section */}
+      <div className={`border rounded-lg p-6 mb-6 ${
+        fromGuide 
+          ? 'bg-green-50 border-green-200' 
+          : 'bg-gray-50 border-gray-200'
+      }`}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {fromGuide ? '🎯 Recommended Starter Prompts' : 'Starter Prompts'}
+            </h3>
+            {fromGuide && (
+              <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                From your guide
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setShowStarterPrompts(!showStarterPrompts)}
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+          >
+            {showStarterPrompts ? 'Hide' : 'Show'} Examples
+          </button>
+        </div>
+        
+        {fromGuide && !showStarterPrompts && (
+          <p className="text-sm text-green-700 mb-2">
+            We've selected prompts that match the concepts from your guide. Click "Show Examples" to see them.
+          </p>
+        )}
+        
+        {showStarterPrompts && (
+          <div className="space-y-4">
+            {/* Level Selector */}
+            <div className="flex items-center space-x-4">
+              <span className="text-sm font-medium text-gray-700">Skill Level:</span>
+              {(['beginner', 'intermediate', 'advanced'] as const).map((level) => (
+                <button
+                  key={level}
+                  onClick={() => setSelectedLevel(level)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                    selectedLevel === level
+                      ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                      : 'bg-white text-gray-600 border border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  {level.charAt(0).toUpperCase() + level.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Starter Prompts Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(() => {
+                const allPrompts = getStarterPrompts(guideConcept || 'general', selectedLevel);
+                const conceptPrompts = allPrompts.filter(p => p.concept === (guideConcept || 'general'));
+                const otherPrompts = allPrompts.filter(p => p.concept !== (guideConcept || 'general'));
+                
+                // Prioritize concept-specific prompts when coming from guide
+                const displayPrompts = fromGuide && conceptPrompts.length > 0 
+                  ? [...conceptPrompts, ...otherPrompts].slice(0, 6)
+                  : allPrompts.slice(0, 4);
+                
+                return displayPrompts.map((starter) => {
+                  const isFromGuideConcept = fromGuide && starter.concept === (guideConcept || 'general');
+                  
+                  return (
+                    <div
+                      key={starter.id}
+                      className={`border rounded-md p-4 hover:border-gray-300 transition-colors cursor-pointer ${
+                        isFromGuideConcept 
+                          ? 'bg-green-50 border-green-200 hover:border-green-300' 
+                          : 'bg-white border-gray-200'
+                      }`}
+                      onClick={() => setUserPrompt(starter.prompt)}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-medium text-gray-900">{starter.title}</h4>
+                        {isFromGuideConcept && (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full ml-2 flex-shrink-0">
+                            Guide
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3">{starter.description}</p>
+                      <p className="text-sm text-gray-800 line-clamp-3">{starter.prompt}</p>
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-xs text-blue-600 font-medium">
+                          {getConceptDisplayName(starter.concept)}
+                        </span>
+                        <span className="text-xs text-gray-500">Click to use</span>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+            
+            {getStarterPrompts(guideConcept || 'general', selectedLevel).length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">
+                No starter prompts available for this level. Try a different skill level.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Lab Interface */}
@@ -305,9 +509,23 @@ export default function CompareBasicsLab() {
                       </svg>
                     )}
                   </div>
-                  <div className="text-sm text-gray-500">
-                    <div>{getSourceBadge(model.source)}</div>
-                    <div>Max tokens: {model.maxTokens}</div>
+                  <div className="text-sm">
+                    <div className="text-gray-500">{getSourceBadge(model.source)}</div>
+                    <div className="text-gray-500">Max tokens: {model.maxTokens}</div>
+                    {(() => {
+                      const modelStatus = getModelStatus(model.id);
+                      return (
+                        <div className={`text-xs ${
+                          modelStatus.source === 'hosted' ? 'text-green-600' :
+                          modelStatus.source === 'local' ? 'text-blue-600' :
+                          'text-orange-600'
+                        }`}>
+                          {modelStatus.source === 'hosted' && '✨ Real AI'}
+                          {modelStatus.source === 'local' && '💻 Browser AI'}
+                          {modelStatus.source === 'sample' && '📦 Demo mode'}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </button>
               );
@@ -350,7 +568,7 @@ export default function CompareBasicsLab() {
               display: 'block',
               width: '100%',
               padding: tokens.spacing[3],
-              fontSize: tokens.typography.fontSize.sm,
+              fontSize: '16px', // Prevents zoom on iOS
               lineHeight: tokens.typography.lineHeight.normal,
               color: tokens.colors.text.secondary,
               backgroundColor: tokens.colors.background.primary,
@@ -360,6 +578,11 @@ export default function CompareBasicsLab() {
               outline: 'none',
               resize: 'vertical' as const,
               fontFamily: tokens.typography.fontFamily.sans.join(', '),
+              minHeight: tokens.touchTarget.comfortable,
+              touchAction: 'manipulation',
+              WebkitAppearance: 'none',
+              MozAppearance: 'none',
+              appearance: 'none',
             }}
             onFocus={(e) => {
               e.currentTarget.style.borderColor = tokens.colors.border.focus;
@@ -470,7 +693,7 @@ export default function CompareBasicsLab() {
 
         {evaluationStatus.status === 'timeout' && (
           <StatusIndicator
-            status="timeout"
+            status={AttemptStatus.TIMEOUT}
             title="Evaluation Timeout"
             message="The evaluation is taking longer than expected. Multiple models may still be processing in the background."
           />
@@ -495,15 +718,32 @@ export default function CompareBasicsLab() {
         {evaluationStatus.status === 'completed' && evaluationStatus.evaluation && (
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Comparison Results</h2>
-              <p className="text-sm text-gray-500 mt-1">
-                Compare how different models respond to your prompt
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-medium text-gray-900">Comparison Results</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Compare how different models respond to your prompt
+                  </p>
+                  {fromGuide && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      Notice how different models handle the concepts from your guide differently!
+                    </p>
+                  )}
+                </div>
+                {fromGuide && guideSlug && (
+                  <Link
+                    href={`/guides/${guideSlug}`}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    📚 Back to Guide
+                  </Link>
+                )}
+              </div>
             </div>
             
             {/* Side-by-side results grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 p-6">
-              {evaluationStatus.evaluation.perModelResults.map((result, index) => {
+              {(evaluationStatus.evaluation.results || []).map((result, index) => {
                 const modelInfo = availableModels.find(m => m.id === result.modelId);
                 
                 return (
@@ -515,24 +755,24 @@ export default function CompareBasicsLab() {
                           {modelInfo?.name || result.modelId}
                         </h3>
                         <p className="text-sm text-gray-500">
-                          {getSourceBadge(result.source)} • {result.latencyMs}ms
-                          {result.usageTokens && ` • ${result.usageTokens} tokens`}
+                          {getSourceBadge(result.source)} • {result.latency}ms
+                          {result.tokenCount && ` • ${result.tokenCount} tokens`}
                         </p>
                       </div>
                       
                       {/* Score Badge */}
-                      {result.score !== undefined && (
+                      {result.scores?.total !== undefined && (
                         <div className="text-right">
                           <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                            result.score >= 8 ? 'bg-green-100 text-green-800' :
-                            result.score >= 6 ? 'bg-yellow-100 text-yellow-800' :
+                            result.scores.total >= 8 ? 'bg-green-100 text-green-800' :
+                            result.scores.total >= 6 ? 'bg-yellow-100 text-yellow-800' :
                             'bg-red-100 text-red-800'
                           }`}>
-                            {result.score}/10
+                            {result.scores.total}/10
                           </div>
-                          {result.breakdown && (
+                          {result.scores.clarity !== undefined && result.scores.completeness !== undefined && (
                             <p className="text-xs text-gray-500 mt-1">
-                              C: {result.breakdown.clarity}/5 • Co: {result.breakdown.completeness}/5
+                              C: {result.scores.clarity}/5 • Co: {result.scores.completeness}/5
                             </p>
                           )}
                         </div>
@@ -543,15 +783,15 @@ export default function CompareBasicsLab() {
                     <div className="mb-4">
                       <h4 className="text-sm font-medium text-gray-700 mb-2">Response:</h4>
                       <div className="bg-white rounded-md p-3 text-sm text-gray-900 whitespace-pre-wrap border min-h-[120px]">
-                        {result.text}
+                        {result.response}
                       </div>
                     </div>
 
                     {/* Improvement Notes */}
-                    {result.notes && (
+                    {result.feedback?.explanation && (
                       <div className="bg-blue-50 rounded-md p-3 border border-blue-200">
                         <h4 className="text-sm font-medium text-blue-800 mb-1">Suggestions:</h4>
-                        <p className="text-sm text-blue-700">{result.notes}</p>
+                        <p className="text-sm text-blue-700">{result.feedback.explanation}</p>
                       </div>
                     )}
                   </div>
@@ -560,30 +800,30 @@ export default function CompareBasicsLab() {
             </div>
 
             {/* Comparison Metrics Summary */}
-            {evaluationStatus.evaluation.perModelResults.length > 1 && (
+            {(evaluationStatus.evaluation.results || []).length > 1 && (
               <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Comparison Summary</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <span className="text-gray-500">Best Score:</span>
                     <div className="font-medium">
-                      {Math.max(...evaluationStatus.evaluation.perModelResults.map(r => r.score || 0))}/10
+                      {Math.max(...(evaluationStatus.evaluation.results || []).map(r => r.scores?.total || 0))}/10
                     </div>
                   </div>
                   <div>
                     <span className="text-gray-500">Avg Latency:</span>
                     <div className="font-medium">
-                      {Math.round(evaluationStatus.evaluation.perModelResults.reduce((sum, r) => sum + r.latencyMs, 0) / evaluationStatus.evaluation.perModelResults.length)}ms
+                      {Math.round((evaluationStatus.evaluation.results || []).reduce((sum, r) => sum + r.latency, 0) / (evaluationStatus.evaluation.results || []).length)}ms
                     </div>
                   </div>
                   <div>
                     <span className="text-gray-500">Models Tested:</span>
-                    <div className="font-medium">{evaluationStatus.evaluation.perModelResults.length}</div>
+                    <div className="font-medium">{(evaluationStatus.evaluation.results || []).length}</div>
                   </div>
                   <div>
                     <span className="text-gray-500">Sources:</span>
                     <div className="font-medium">
-                      {Array.from(new Set(evaluationStatus.evaluation.perModelResults.map(r => r.source))).map(source => 
+                      {Array.from(new Set((evaluationStatus.evaluation.results || []).map(r => r.source))).map(source => 
                         getSourceBadge(source).split(' ')[0]
                       ).join(' ')}
                     </div>
@@ -597,12 +837,23 @@ export default function CompareBasicsLab() {
 
       {/* Navigation */}
       <div className="mt-8 pt-6 border-t border-gray-200">
-        <a
-          href="/"
-          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-        >
-          ← Back to Home
-        </a>
+        <div className="flex justify-between items-center">
+          <Link
+            href="/"
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+          >
+            ← Back to Home
+          </Link>
+          
+          {fromGuide && guideSlug && (
+            <Link
+              href={`/guides/${guideSlug}`}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            >
+              Back to Guide →
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );

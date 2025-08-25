@@ -41,7 +41,9 @@ const LOADING_MESSAGES: Record<LoadingState, { icon: string; title: string }> = 
   'compiling': { icon: '⚙️', title: 'Compiling for your device' },
   'warming-up': { icon: '🔥', title: 'Warming up' },
   'ready': { icon: '✅', title: 'Ready to go!' },
-  'error': { icon: '❌', title: 'Setup failed' }
+  'error': { icon: '❌', title: 'Setup failed' },
+  'retrying': { icon: '🔄', title: 'Retrying...' },
+  'fallback': { icon: '📖', title: 'Demo mode ready' }
 };
 
 export default function OnboardingModal({
@@ -78,8 +80,9 @@ export default function OnboardingModal({
     onStartLab();
   };
 
-  const isLoading = loadingProgress && loadingProgress.state !== 'idle' && loadingProgress.state !== 'ready';
+  const isLoading = loadingProgress && !['idle', 'ready', 'error', 'fallback'].includes(loadingProgress.state);
   const isReady = loadingProgress?.state === 'ready';
+  const isFallback = loadingProgress?.state === 'fallback';
   const hasError = loadingProgress?.state === 'error';
 
   if (!isOpen) return null;
@@ -220,6 +223,24 @@ export default function OnboardingModal({
                         onClick={handleStartLab}
                       >
                         Start Practicing
+                      </button>
+                    </div>
+                  )}
+
+                  {isFallback && (
+                    <div className="fallback-section">
+                      <p className="fallback-message">
+                        📖 Demo mode is ready! You can practice with pre-generated responses.
+                      </p>
+                      <p className="fallback-help">
+                        This mode still provides valuable learning about prompt engineering concepts.
+                      </p>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={handleStartLab}
+                      >
+                        Start in Demo Mode
                       </button>
                     </div>
                   )}

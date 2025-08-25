@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callModel } from '@/lib/models/providers';
-import { evaluateResponse } from '@/lib/evaluator';
-import { ModelResult } from '@/types';
+import { callModel } from '../../../lib/models/providers';
+import { evaluateResponse } from '../../../lib/evaluator';
+import { ModelResult, ModelSource } from '../../../types';
 import { 
-  CompareRequestSchema, 
+  validateCompareRequest, 
   sanitizePrompt, 
   sanitizeSystemPrompt,
   validateModelSelection,
   detectPromptInjection 
-} from '@/lib/validation';
+} from '../../../lib/validation';
 
 export interface CompareRequest {
   userPrompt: string;
   systemPrompt?: string;
   models: string[];
+  rubricVersion?: string;
 }
 
 export interface CompareResponse {
@@ -38,17 +39,16 @@ export async function POST(request: NextRequest) {
     // Parse request body
     const rawBody = await request.json();
     
-    // Validate with Zod schema
-    const validationResult = CompareRequestSchema.safeParse(rawBody);
-    if (!validationResult.success) {
-      const errors = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+    // Validate request data
+    const validationResult = validateCompareRequest(rawBody);
+    if (!validationResult.isValid) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: errors },
+        { error: 'Invalid request data', details: validationResult.errors },
         { status: 400 }
       );
     }
     
-    const body = validationResult.data;
+    const body = rawBody;
     
     // Additional model selection validation (not covered by schema)
     const modelValidation = validateModelSelection('compare-basics', body.models);
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     const fallbacksUsed: string[] = [];
     
     // Process each model in parallel
-    const modelPromises = body.models.map(async (modelId) => {
+    const modelPromises = body.models.map(async (modelId: string) => {
       try {
         // Call the model with sanitized prompts
         const modelResult = await callModel(modelId, sanitizedUserPrompt, sanitizedSystemPrompt);
@@ -96,8 +96,8 @@ export async function POST(request: NextRequest) {
           fallbacksUsed.push(modelId);
         }
         
-        // Evaluate the response using sanitized prompt
-        const evaluation = evaluateResponse(sanitizedUserPrompt, modelResult);
+        // Evaluate the response using sanitized prompt and specified rubric version
+        const evaluation = evaluateResponse(sanitizedUserPrompt, modelResult, body.rubricVersion);
         
         return {
           ...modelResult,
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
           modelId,
           text: `Error: Failed to process request for ${modelId}`,
           latencyMs: 0,
-          source: 'local' as const,
+          source: ModelSource.LOCAL,
           score: 0,
           breakdown: { clarity: 0, completeness: 0 },
           notes: 'Model processing failed. Please try again.'

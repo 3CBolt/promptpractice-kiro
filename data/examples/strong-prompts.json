@@ -1,0 +1,196 @@
+{
+  "schemaVersion": "1.0",
+  "examples": {
+    "fundamentals": [
+      {
+        "id": "clear-specific-request",
+        "title": "Clear and Specific Request",
+        "prompt": "Write a 3-paragraph explanation of photosynthesis for a 10th-grade biology student. Include the chemical equation and explain why it's important for life on Earth.",
+        "category": "clarity",
+        "techniques": [
+          "Specific audience (10th-grade student)",
+          "Clear format requirement (3 paragraphs)",
+          "Explicit content requests (chemical equation, importance)",
+          "Context provided (biology education)"
+        ],
+        "explanation": "This prompt works well because it specifies the audience, format, and exact content needed. The model knows exactly what level of complexity to use and what information to include.",
+        "concepts": ["specificity", "audience-awareness", "structured-requests"]
+      },
+      {
+        "id": "step-by-step-process",
+        "title": "Process Breakdown Request",
+        "prompt": "Explain how to change a car tire in 8 clear steps. For each step, include any tools needed and safety considerations. Assume the person has never done this before.",
+        "category": "completeness",
+        "techniques": [
+          "Numbered steps requested (8 steps)",
+          "Additional context per step (tools, safety)",
+          "Audience assumption (beginner)",
+          "Clear structure expectation"
+        ],
+        "explanation": "This prompt ensures completeness by asking for a specific number of steps and additional context. It also sets clear expectations about the audience's knowledge level.",
+        "concepts": ["structured-output", "completeness", "beginner-friendly"]
+      },
+      {
+        "id": "comparative-analysis",
+        "title": "Structured Comparison",
+        "prompt": "Compare electric cars vs gasoline cars in a table format. Include columns for: initial cost, fuel/energy costs, environmental impact, and maintenance. Add a brief summary paragraph with your recommendation.",
+        "category": "both",
+        "techniques": [
+          "Specific format (table)",
+          "Defined comparison criteria",
+          "Additional analysis requested (summary + recommendation)",
+          "Clear structure with columns specified"
+        ],
+        "explanation": "This prompt combines clarity (table format, specific columns) with completeness (multiple criteria, summary). The structured approach makes the response easy to understand and comprehensive.",
+        "concepts": ["structured-output", "comparative-analysis", "format-specification"]
+      }
+    ],
+    "chain-of-thought": [
+      {
+        "id": "reasoning-steps",
+        "title": "Explicit Reasoning Request",
+        "prompt": "A store offers a 20% discount on items over $50, plus an additional 10% off for members. If I'm a member buying a $75 item, what's my final price? Show your calculation steps.",
+        "category": "clarity",
+        "techniques": [
+          "Explicit request for reasoning ('Show your calculation steps')",
+          "Clear problem setup with all variables",
+          "Step-by-step expectation implied"
+        ],
+        "explanation": "By asking to 'show calculation steps', this prompt encourages the model to break down its reasoning process, making the answer more transparent and educational.",
+        "concepts": ["step-by-step-reasoning", "transparency", "mathematical-thinking"]
+      },
+      {
+        "id": "problem-solving-approach",
+        "title": "Structured Problem Solving",
+        "prompt": "I need to plan a birthday party for 25 people with a $300 budget. Walk me through your thinking process: first identify the main cost categories, then suggest specific allocations, and finally provide 2-3 money-saving tips.",
+        "category": "both",
+        "techniques": [
+          "Explicit thinking process request",
+          "Multi-step approach outlined",
+          "Specific deliverables at each step",
+          "Clear constraints provided (25 people, $300)"
+        ],
+        "explanation": "This prompt guides the model through a structured thinking process while providing clear constraints. It ensures both logical reasoning and comprehensive coverage of the problem.",
+        "concepts": ["structured-thinking", "problem-decomposition", "constraint-based-planning"]
+      },
+      {
+        "id": "decision-framework",
+        "title": "Decision Analysis Framework",
+        "prompt": "Help me decide between three job offers. First, ask me what factors are most important to me. Then, create a scoring framework and walk through how to evaluate each option systematically.",
+        "category": "completeness",
+        "techniques": [
+          "Interactive approach (asking clarifying questions)",
+          "Framework creation request",
+          "Systematic evaluation process",
+          "Multi-step methodology"
+        ],
+        "explanation": "This prompt creates a collaborative decision-making process. It ensures completeness by building a systematic framework rather than just giving quick advice.",
+        "concepts": ["decision-frameworks", "systematic-analysis", "interactive-prompting"]
+      }
+    ],
+    "system-prompts": [
+      {
+        "id": "expert-persona",
+        "title": "Expert Role Assignment",
+        "prompt": "You are a senior software architect with 15 years of experience in distributed systems. A junior developer asks: 'What's the difference between microservices and monoliths?' Respond as this expert would, using appropriate technical depth while remaining educational.",
+        "category": "clarity",
+        "techniques": [
+          "Specific role definition (senior software architect)",
+          "Experience level specified (15 years)",
+          "Domain expertise (distributed systems)",
+          "Audience context (junior developer asking)",
+          "Tone guidance (technical but educational)"
+        ],
+        "explanation": "This prompt establishes a clear persona with specific expertise and experience level. It also provides context about the audience, helping the model calibrate its response appropriately.",
+        "concepts": ["role-playing", "expertise-simulation", "audience-calibration"]
+      },
+      {
+        "id": "communication-style",
+        "title": "Style and Tone Specification",
+        "prompt": "You are a friendly, encouraging fitness coach. Someone just started their fitness journey and feels overwhelmed. Write a motivational message that acknowledges their feelings, provides 3 simple first steps, and maintains an upbeat but realistic tone throughout.",
+        "category": "both",
+        "techniques": [
+          "Personality traits defined (friendly, encouraging)",
+          "Professional role (fitness coach)",
+          "Emotional context (overwhelmed beginner)",
+          "Specific content requirements (acknowledge feelings, 3 steps)",
+          "Tone specification (upbeat but realistic)"
+        ],
+        "explanation": "This prompt combines role-playing with specific content and tone requirements. It ensures the response will be both appropriate to the situation and complete in addressing the person's needs.",
+        "concepts": ["empathetic-communication", "structured-support", "tone-control"]
+      },
+      {
+        "id": "context-constraints",
+        "title": "Contextual Constraints",
+        "prompt": "You are a museum tour guide at the Natural History Museum. A group of 8-year-olds asks about dinosaurs. Explain T-Rex in a way that's exciting and age-appropriate, using simple language and including 2-3 fun facts they can share with friends.",
+        "category": "clarity",
+        "techniques": [
+          "Specific setting (Natural History Museum)",
+          "Role definition (tour guide)",
+          "Precise audience (8-year-olds)",
+          "Topic focus (T-Rex)",
+          "Language level guidance (simple)",
+          "Engagement factor (exciting, shareable facts)"
+        ],
+        "explanation": "This prompt provides rich context that helps the model understand exactly how to frame its response. The age-specific guidance ensures appropriate complexity and engagement level.",
+        "concepts": ["age-appropriate-communication", "contextual-framing", "engagement-optimization"]
+      }
+    ],
+    "general": [
+      {
+        "id": "iterative-refinement",
+        "title": "Iterative Improvement",
+        "prompt": "Write a product description for wireless headphones. After you write it, critique your own work and suggest 3 specific improvements. Then write a revised version incorporating those improvements.",
+        "category": "completeness",
+        "techniques": [
+          "Multi-stage process (write, critique, revise)",
+          "Self-reflection component",
+          "Specific improvement count (3)",
+          "Iterative refinement approach"
+        ],
+        "explanation": "This prompt uses the model's ability to self-critique and improve. It ensures a more thoughtful, refined output by building iteration into the process.",
+        "concepts": ["iterative-improvement", "self-reflection", "quality-enhancement"]
+      },
+      {
+        "id": "multiple-perspectives",
+        "title": "Multi-Perspective Analysis",
+        "prompt": "Analyze the pros and cons of remote work from three perspectives: employee, employer, and society. For each perspective, provide 2 advantages and 2 challenges. Conclude with which perspective you think has the strongest case and why.",
+        "category": "both",
+        "techniques": [
+          "Multiple viewpoints specified (3 perspectives)",
+          "Balanced analysis (pros and cons)",
+          "Quantified requirements (2 advantages, 2 challenges each)",
+          "Synthesis component (strongest case analysis)"
+        ],
+        "explanation": "This prompt ensures comprehensive coverage by explicitly requesting multiple perspectives. The structured format and synthesis requirement create both clarity and completeness.",
+        "concepts": ["multi-perspective-analysis", "balanced-reasoning", "synthesis-thinking"]
+      },
+      {
+        "id": "creative-constraints",
+        "title": "Creative with Constraints",
+        "prompt": "Write a short story (exactly 100 words) about a time traveler who can only travel backwards. The story must include: a specific historical event, a moral dilemma, and end with a surprising twist. Use vivid imagery and keep the tone mysterious.",
+        "category": "both",
+        "techniques": [
+          "Precise length constraint (exactly 100 words)",
+          "Creative premise with limitations",
+          "Required story elements (3 specific components)",
+          "Style guidance (vivid imagery, mysterious tone)",
+          "Structure requirement (twist ending)"
+        ],
+        "explanation": "This prompt demonstrates how constraints can enhance creativity. By providing specific requirements within a creative task, it ensures both structure and imaginative output.",
+        "concepts": ["creative-constraints", "structured-creativity", "precise-requirements"]
+      }
+    ]
+  },
+  "metadata": {
+    "totalExamples": 12,
+    "categories": {
+      "fundamentals": 3,
+      "chain-of-thought": 3,
+      "system-prompts": 3,
+      "general": 3
+    },
+    "lastUpdated": "2024-08-24",
+    "version": "1.0"
+  }
+}

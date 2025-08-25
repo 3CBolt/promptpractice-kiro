@@ -1,0 +1,5 @@
+{
+  "error": "Invalid attempt data: Invalid attemptId format, userId must be a string, timestamp must be a string, schemaVersion must be \"1.0\"",
+  "timestamp": "2025-08-24T21:39:05.598Z",
+  "stack": "Error: Invalid attempt data: Invalid attemptId format, userId must be a string, timestamp must be a string, schemaVersion must be \"1.0\"\n    at writeAttempt (webpack-internal:///(rsc)/./lib/storage.ts:55:15)\n    at POST (webpack-internal:///(rsc)/./app/api/attempts/route.ts:75:77)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async /Users/cameronbolton/Desktop/promptpractice-kiro/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:61856"
+}

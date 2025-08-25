@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { Attempt, Evaluation } from '@/types';
+import { AttemptStatus } from '@/types/contracts';
 import { generateId, validateFilePath, validateAttempt, validateEvaluation } from './utils';
 
 // Path utilities - configurable for testing
@@ -36,7 +37,7 @@ export async function writeAttempt(attempt: Attempt): Promise<void> {
   }
   
   // Validate file path to prevent directory traversal
-  const fileName = `${attempt.id}.json`;
+  const fileName = `${attempt.attemptId}.json`;
   if (!validateFilePath(`data/attempts/${fileName}`)) {
     throw new Error('Invalid file path detected');
   }
@@ -44,7 +45,7 @@ export async function writeAttempt(attempt: Attempt): Promise<void> {
   await ensureDirectories();
   const { ATTEMPTS_DIR } = getDirectories();
   const filePath = join(ATTEMPTS_DIR, fileName);
-  const jsonContent = JSON.stringify(validation.attempt, null, 2); // Pretty-printed with 2-space indentation
+  const jsonContent = JSON.stringify(attempt, null, 2); // Pretty-printed with 2-space indentation
   await fs.writeFile(filePath, jsonContent, 'utf8');
 }
 
@@ -69,7 +70,7 @@ export async function readAttempt(attemptId: string): Promise<Attempt | null> {
       return null;
     }
     
-    return validation.attempt!;
+    return parsed;
   } catch (error) {
     return null;
   }
@@ -105,7 +106,7 @@ export async function writeEvaluation(evaluation: Evaluation): Promise<void> {
   await ensureDirectories();
   const { EVALUATIONS_DIR } = getDirectories();
   const filePath = join(EVALUATIONS_DIR, fileName);
-  const jsonContent = JSON.stringify(validation.evaluation, null, 2); // Pretty-printed with 2-space indentation
+  const jsonContent = JSON.stringify(evaluation, null, 2); // Pretty-printed with 2-space indentation
   await fs.writeFile(filePath, jsonContent, 'utf8');
 }
 
@@ -130,7 +131,7 @@ export async function readEvaluation(attemptId: string): Promise<Evaluation | nu
       return null;
     }
     
-    return validation.evaluation!;
+    return parsed;
   } catch (error) {
     return null;
   }
@@ -193,24 +194,30 @@ export function createAttempt(
   systemPrompt?: string
 ): Attempt {
   return {
-    id: generateId(),
+    attemptId: generateId(),
+    userId: 'anonymous',
     labId,
     systemPrompt,
     userPrompt,
     models,
-    createdAt: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    schemaVersion: '1.0',
+    rubricVersion: '1.0'
   };
 }
 
 // Utility function to create a new evaluation with generated ID
 export function createEvaluation(
   attemptId: string,
-  perModelResults: Evaluation['perModelResults']
+  results: Evaluation['results'],
+  status: AttemptStatus = AttemptStatus.SUCCESS
 ): Evaluation {
   return {
-    id: generateId(),
     attemptId,
-    perModelResults,
-    createdAt: new Date().toISOString()
+    status,
+    results,
+    rubricVersion: '1.0',
+    timestamp: new Date().toISOString(),
+    schemaVersion: '1.0'
   };
 }

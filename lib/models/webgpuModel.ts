@@ -3,7 +3,8 @@
  * Provides zero-setup experience with local model execution
  */
 
-import { ModelResult } from '@/types';
+import { ModelResult, ModelSource } from '@/types';
+import { trackWebGPUFailure, resetWebGPUFailures } from '@/lib/fallbackResponses';
 
 // WebLLM types (simplified interface)
 interface WebLLMEngine {
@@ -60,13 +61,35 @@ export type LoadingState =
   | 'compiling'
   | 'warming-up'
   | 'ready'
-  | 'error';
+  | 'error'
+  | 'retrying'
+  | 'fallback';
 
 export interface LoadingProgress {
   state: LoadingState;
   progress: number; // 0-100
   message: string;
   error?: string;
+  estimatedTimeRemaining?: number; // seconds
+  retryAttempt?: number;
+  maxRetries?: number;
+}
+
+// Error types for model loading
+export type ModelLoadError = 
+  | 'webgpu-unavailable'
+  | 'model-download-failed'
+  | 'compilation-failed'
+  | 'insufficient-memory'
+  | 'network-error'
+  | 'unknown-error';
+
+export interface ModelLoadErrorDetails {
+  type: ModelLoadError;
+  message: string;
+  canRetry: boolean;
+  suggestedFallback?: string;
+  nextSteps: string[];
 }
 
 // WebGPU capability detection
@@ -102,6 +125,10 @@ export class WebGPUModelManager {
   private loadingState: LoadingState = 'idle';
   private progressCallback: ((progress: LoadingProgress) => void) | null = null;
   private webgpuSupported: boolean | null = null;
+  private retryAttempts: number = 0;
+  private maxRetries: number = 3;
+  private fallbackMode: boolean = false;
+  private loadingStartTime: number = 0;
 
   constructor() {
     this.checkWebGPUSupport();
@@ -124,20 +151,117 @@ export class WebGPUModelManager {
 
   private updateProgress(state: LoadingState, progress: number, message: string, error?: string): void {
     this.loadingState = state;
+    
+    // Calculate estimated time remaining based on progress and elapsed time
+    let estimatedTimeRemaining: number | undefined;
+    if (this.loadingStartTime > 0 && progress > 0 && progress < 100) {
+      const elapsed = (Date.now() - this.loadingStartTime) / 1000;
+      const totalEstimated = elapsed / (progress / 100);
+      estimatedTimeRemaining = Math.max(0, totalEstimated - elapsed);
+    }
+    
     if (this.progressCallback) {
-      this.progressCallback({ state, progress, message, error });
+      this.progressCallback({ 
+        state, 
+        progress, 
+        message, 
+        error,
+        estimatedTimeRemaining,
+        retryAttempt: this.retryAttempts,
+        maxRetries: this.maxRetries
+      });
     }
   }
 
-  public async loadModel(modelId: string): Promise<void> {
+  private analyzeLoadError(error: any): ModelLoadErrorDetails {
+    const errorMessage = error?.message || 'Unknown error';
+    
+    if (errorMessage.includes('WebGPU') || errorMessage.includes('gpu')) {
+      return {
+        type: 'webgpu-unavailable',
+        message: 'WebGPU is not available in this browser',
+        canRetry: false,
+        suggestedFallback: 'read-only-demo',
+        nextSteps: [
+          'Try using Chrome or Edge browser',
+          'Enable hardware acceleration in browser settings',
+          'Continue with read-only demo mode'
+        ]
+      };
+    }
+    
+    if (errorMessage.includes('download') || errorMessage.includes('fetch') || errorMessage.includes('network')) {
+      return {
+        type: 'network-error',
+        message: 'Failed to download model weights',
+        canRetry: true,
+        suggestedFallback: 'webgpu-tiny',
+        nextSteps: [
+          'Check your internet connection',
+          'Try again in a few moments',
+          'Switch to a smaller model'
+        ]
+      };
+    }
+    
+    if (errorMessage.includes('memory') || errorMessage.includes('OOM')) {
+      return {
+        type: 'insufficient-memory',
+        message: 'Not enough memory to load this model',
+        canRetry: false,
+        suggestedFallback: 'webgpu-tiny',
+        nextSteps: [
+          'Close other browser tabs',
+          'Try a smaller model',
+          'Use read-only demo mode'
+        ]
+      };
+    }
+    
+    if (errorMessage.includes('compile') || errorMessage.includes('compilation')) {
+      return {
+        type: 'compilation-failed',
+        message: 'Failed to compile model for WebGPU',
+        canRetry: true,
+        suggestedFallback: 'webgpu-tiny',
+        nextSteps: [
+          'Try again with a different model',
+          'Update your browser',
+          'Use read-only demo mode'
+        ]
+      };
+    }
+    
+    return {
+      type: 'unknown-error',
+      message: errorMessage,
+      canRetry: true,
+      suggestedFallback: 'read-only-demo',
+      nextSteps: [
+        'Try again in a few moments',
+        'Switch to a different model',
+        'Continue with read-only demo mode'
+      ]
+    };
+  }
+
+  public async loadModel(modelId: string, isRetry: boolean = false): Promise<void> {
     const modelConfig = WEBGPU_MODELS.find(m => m.id === modelId);
     if (!modelConfig) {
       throw new Error(`Unknown WebGPU model: ${modelId}`);
     }
 
+    if (!isRetry) {
+      this.retryAttempts = 0;
+      this.loadingStartTime = Date.now();
+    }
+
     // Check WebGPU support first
     if (!(await this.isWebGPUSupported())) {
-      throw new Error('WebGPU not supported in this browser');
+      const error = new Error('WebGPU not supported in this browser');
+      const errorDetails = this.analyzeLoadError(error);
+      this.updateProgress('error', 0, errorDetails.message, error.message);
+      throw error;
     }
 
     try {
@@ -162,14 +286,45 @@ export class WebGPUModelManager {
       await this.simulateModelLoad(modelConfig);
       
       this.currentModelId = modelId;
+      this.retryAttempts = 0; // Reset on success
       this.updateProgress('ready', 100, `${modelConfig.name} ready for inference`);
       
-      // Cache the successful model choice
+      // Cache the successful model choice and reset failure tracking
       localStorage.setItem(STORAGE_KEYS.LAST_MODEL, modelId);
+      resetWebGPUFailures();
       
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      this.updateProgress('error', 0, 'Failed to load model', errorMessage);
+      const errorDetails = this.analyzeLoadError(error);
+      
+      // Try retry logic if applicable
+      if (errorDetails.canRetry && this.retryAttempts < this.maxRetries) {
+        this.retryAttempts++;
+        this.updateProgress('retrying', 0, `Retry ${this.retryAttempts}/${this.maxRetries}: ${errorDetails.message}`);
+        
+        // Wait before retry with exponential backoff
+        const retryDelay = Math.min(1000 * Math.pow(2, this.retryAttempts - 1), 10000);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        
+        return this.loadModel(modelId, true);
+      }
+      
+      // If retries exhausted or error not retryable, try fallback
+      if (errorDetails.suggestedFallback && errorDetails.suggestedFallback !== modelId) {
+        this.updateProgress('fallback', 0, `Trying fallback: ${errorDetails.suggestedFallback}`);
+        
+        try {
+          return await this.loadModel(errorDetails.suggestedFallback, false);
+        } catch (fallbackError) {
+          // If fallback also fails, enter read-only mode
+          this.fallbackMode = true;
+          this.updateProgress('fallback', 100, 'Entering read-only demo mode');
+          return;
+        }
+      }
+      
+      // Final error state - track failure
+      trackWebGPUFailure();
+      this.updateProgress('error', 0, errorDetails.message, error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   }
@@ -202,20 +357,25 @@ export class WebGPUModelManager {
   }
 
   private async simulateModelLoad(config: WebGPUModelConfig): Promise<void> {
+    // Simulate potential failures for demonstration
+    const shouldSimulateFailure = Math.random() < 0.1; // 10% chance of failure for demo
+    
     const steps = [
-      { progress: 30, message: 'Downloading model weights...', delay: 2000 },
-      { progress: 60, message: 'Compiling model for WebGPU...', delay: 1500 },
-      { progress: 80, message: 'Warming up inference engine...', delay: 1000 },
-      { progress: 95, message: 'Finalizing setup...', delay: 500 }
+      { progress: 30, message: 'Downloading model weights...', delay: 2000, state: 'fetching-weights' as LoadingState },
+      { progress: 60, message: 'Compiling model for WebGPU...', delay: 1500, state: 'compiling' as LoadingState },
+      { progress: 80, message: 'Warming up inference engine...', delay: 1000, state: 'warming-up' as LoadingState },
+      { progress: 95, message: 'Finalizing setup...', delay: 500, state: 'warming-up' as LoadingState }
     ];
 
-    for (const step of steps) {
-      this.updateProgress(
-        step.progress < 60 ? 'fetching-weights' : 
-        step.progress < 80 ? 'compiling' : 'warming-up',
-        step.progress,
-        step.message
-      );
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      
+      // Simulate failure at different stages
+      if (shouldSimulateFailure && i === 1) {
+        throw new Error('Model compilation failed: WebGPU shader compilation error');
+      }
+      
+      this.updateProgress(step.state, step.progress, step.message);
       await new Promise(resolve => setTimeout(resolve, step.delay));
     }
   }
@@ -237,6 +397,13 @@ export class WebGPUModelManager {
     prompt: string,
     systemPrompt?: string
   ): Promise<ModelResult> {
+    // If in fallback mode, use pre-generated responses
+    if (this.fallbackMode) {
+      const { getFallbackGenerator } = await import('@/lib/fallbackResponses');
+      const generator = getFallbackGenerator();
+      return generator.generateResponse(prompt, systemPrompt);
+    }
+
     if (!this.engine || !this.currentModelId) {
       throw new Error('No model loaded. Please load a model first.');
     }
@@ -260,10 +427,10 @@ export class WebGPUModelManager {
       
       return {
         modelId: this.currentModelId,
-        text: response,
-        latencyMs,
-        usageTokens,
-        source: 'local'
+        response: response,
+        latency: latencyMs,
+        tokenCount: usageTokens,
+        source: ModelSource.LOCAL
       };
       
     } catch (error) {
@@ -292,7 +459,43 @@ export class WebGPUModelManager {
   }
 
   public isModelLoaded(): boolean {
-    return this.currentModelId !== null && this.loadingState === 'ready';
+    return this.currentModelId !== null && (this.loadingState === 'ready' || this.fallbackMode);
+  }
+
+  public isFallbackMode(): boolean {
+    return this.fallbackMode;
+  }
+
+  public getErrorDetails(): ModelLoadErrorDetails | null {
+    if (this.loadingState !== 'error') return null;
+    
+    return {
+      type: 'unknown-error',
+      message: 'Model loading failed',
+      canRetry: true,
+      suggestedFallback: 'read-only-demo',
+      nextSteps: [
+        'Try again with a different model',
+        'Check your internet connection',
+        'Continue with read-only demo mode'
+      ]
+    };
+  }
+
+  public async retryCurrentModel(): Promise<void> {
+    if (!this.currentModelId) {
+      throw new Error('No model to retry');
+    }
+    
+    this.retryAttempts = 0;
+    this.fallbackMode = false;
+    return this.loadModel(this.currentModelId, false);
+  }
+
+  public enterFallbackMode(): void {
+    this.fallbackMode = true;
+    this.currentModelId = 'read-only-demo';
+    this.updateProgress('fallback', 100, 'Read-only demo mode active');
   }
 }
 

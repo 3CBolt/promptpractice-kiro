@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ModelProvider } from '@/types';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { ModelProvider, AttemptStatus, ModelSource, ModelResult } from '@/types';
 import { MODEL_REGISTRY, getRateLimitStatus } from '@/lib/models/providers';
 import { useEvaluationStatus } from '@/lib/hooks/useEvaluationStatus';
 import { ErrorBanner, StatusIndicator, OfflineModeIndicator, ModelPicker } from '@/components';
 import OnboardingModal from '@/components/OnboardingModal';
+import LabStepHeader, { LabStep } from '@/components/LabStepHeader';
 import { 
   getOfflineReason, 
   retryApiCall,
@@ -26,8 +29,15 @@ import {
   WEBGPU_MODELS 
 } from '@/lib/models/webgpuModel';
 import { tokens, getFocusBoxShadow } from '@/styles/tokens';
+import { 
+  getStarterPrompts, 
+  getConceptDisplayName, 
+  StarterPrompt 
+} from '@/lib/starterPrompts';
+import { getModelStatus } from '@/lib/models/providers';
 
 export default function PracticeBasicsLab() {
+  const searchParams = useSearchParams();
   const [userPrompt, setUserPrompt] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,6 +49,15 @@ export default function PracticeBasicsLab() {
     reason?: 'no-api-key' | 'rate-limited' | 'network-error' | 'api-error';
     resetTime?: number;
   }>({ isActive: false });
+
+  // Guide context from URL parameters
+  const fromGuide = searchParams?.get('from') === 'guide';
+  const guideSlug = searchParams?.get('guide');
+  const guideConcept = searchParams?.get('concept');
+  const guideTitle = searchParams?.get('title');
+  const ctaType = searchParams?.get('cta'); // 'inline', 'tryit', or null
+  const [showStarterPrompts, setShowStarterPrompts] = useState(fromGuide); // Auto-show if from guide
+  const [selectedLevel, setSelectedLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
 
   // WebGPU and onboarding state
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -58,7 +77,7 @@ export default function PracticeBasicsLab() {
     ? WEBGPU_MODELS.map(model => ({
         id: model.id,
         name: model.name,
-        source: 'local' as const,
+        source: ModelSource.LOCAL,
         maxTokens: 512
       }))
     : MODEL_REGISTRY.filter(model => 
@@ -132,6 +151,14 @@ export default function PracticeBasicsLab() {
       }
     }
   }, [submitError]);
+
+  // Handle prefill parameter for revisiting attempts
+  useEffect(() => {
+    const prefillPrompt = searchParams?.get('prefill');
+    if (prefillPrompt) {
+      setUserPrompt(decodeURIComponent(prefillPrompt));
+    }
+  }, [searchParams]);
 
   // Client-side validation
   const validateInput = (): boolean => {
@@ -226,6 +253,15 @@ export default function PracticeBasicsLab() {
     await handleSubmit();
   };
 
+  const handleStartOver = () => {
+    // Reset all state to start fresh
+    setUserPrompt('');
+    setCurrentAttemptId(null);
+    setSubmitError(null);
+    setValidationErrors([]);
+    evaluationStatus.reset();
+  };
+
   const handleDismissError = () => {
     setSubmitError(null);
   };
@@ -258,7 +294,7 @@ export default function PracticeBasicsLab() {
     setShowOnboarding(false);
   };
 
-  const getSourceBadge = (source: ModelProvider['source']) => {
+  const getSourceBadge = (source: string) => {
     switch (source) {
       case 'hosted':
         return '✨ Hosted';
@@ -273,6 +309,35 @@ export default function PracticeBasicsLab() {
 
   const selectedModelInfo = availableModels.find(m => m.id === selectedModel);
 
+  // Determine current lab step and status
+  const getCurrentStep = (): LabStep => {
+    if (evaluationStatus.status === 'completed' || evaluationStatus.status === AttemptStatus.SUCCESS || evaluationStatus.status === AttemptStatus.PARTIAL) {
+      return 'feedback';
+    } else if (isSubmitting || evaluationStatus.status === 'processing' || evaluationStatus.status === AttemptStatus.QUEUED || evaluationStatus.status === AttemptStatus.RUNNING) {
+      return 'submit';
+    } else {
+      return 'draft';
+    }
+  };
+
+  const getCurrentStatus = (): 'idle' | 'processing' | 'completed' | 'error' | 'timeout' => {
+    if (isSubmitting) {
+      return 'processing';
+    } else if (evaluationStatus.status === AttemptStatus.QUEUED || evaluationStatus.status === AttemptStatus.RUNNING || evaluationStatus.status === 'processing') {
+      return 'processing';
+    } else if (evaluationStatus.status === AttemptStatus.SUCCESS || evaluationStatus.status === 'completed') {
+      return 'completed';
+    } else if (evaluationStatus.status === AttemptStatus.PARTIAL) {
+      return 'processing';
+    } else if (evaluationStatus.status === AttemptStatus.ERROR || evaluationStatus.status === 'failed' || submitError) {
+      return 'error';
+    } else if (evaluationStatus.status === AttemptStatus.TIMEOUT) {
+      return 'timeout';
+    } else {
+      return 'idle';
+    }
+  };
+
   return (
     <>
       {/* Onboarding Modal */}
@@ -283,13 +348,156 @@ export default function PracticeBasicsLab() {
         loadingProgress={loadingProgress || undefined}
       />
 
-      <div className="max-w-4xl mx-auto p-6">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Practice Lab</h1>
-          <p className="text-gray-600">
-            Test your prompts against a single model and receive detailed feedback on clarity and completeness.
-          </p>
+      <div 
+        className="max-w-4xl mx-auto safe-area-padding"
+        style={{
+          padding: `${tokens.mobile.padding.sm} ${tokens.mobile.padding.xs}`,
+        }}
+      >
+        {/* Lab Step Header */}
+        <LabStepHeader
+          currentStep={getCurrentStep()}
+          status={getCurrentStatus()}
+          labTitle="Practice Lab"
+          onStartOver={handleStartOver}
+          disabled={isSubmitting || evaluationStatus.isPolling}
+        />
+
+        {/* Guide Context Banner */}
+        {fromGuide && guideSlug && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <span className="text-blue-600 mr-2">📚</span>
+                <div>
+                  <p className="text-sm font-medium text-blue-900">
+                    From Guide: {guideTitle || getConceptDisplayName(guideConcept || 'general')}
+                  </p>
+                  <p className="text-sm text-blue-700">
+                    Practice the concepts you just learned with real model responses
+                  </p>
+                  {ctaType === 'tryit' && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      💡 The starter prompts below include examples from the guide
+                    </p>
+                  )}
+                </div>
+              </div>
+              <Link
+                href={`/guides/${guideSlug}`}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+              >
+                ← Back to Guide
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Starter Prompts Section */}
+        <div className={`border rounded-lg p-6 mb-6 ${
+          fromGuide 
+            ? 'bg-green-50 border-green-200' 
+            : 'bg-gray-50 border-gray-200'
+        }`}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {fromGuide ? '🎯 Recommended Starter Prompts' : 'Starter Prompts'}
+              </h3>
+              {fromGuide && (
+                <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                  From your guide
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => setShowStarterPrompts(!showStarterPrompts)}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            >
+              {showStarterPrompts ? 'Hide' : 'Show'} Examples
+            </button>
+          </div>
+          
+          {fromGuide && !showStarterPrompts && (
+            <p className="text-sm text-green-700 mb-2">
+              We've selected prompts that match the concepts from your guide. Click "Show Examples" to see them.
+            </p>
+          )}
+          
+          {showStarterPrompts && (
+            <div className="space-y-4">
+              {/* Level Selector */}
+              <div className="flex items-center space-x-4">
+                <span className="text-sm font-medium text-gray-700">Skill Level:</span>
+                {(['beginner', 'intermediate', 'advanced'] as const).map((level) => (
+                  <button
+                    key={level}
+                    onClick={() => setSelectedLevel(level)}
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                      selectedLevel === level
+                        ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                        : 'bg-white text-gray-600 border border-gray-300 hover:border-gray-400'
+                    }`}
+                  >
+                    {level.charAt(0).toUpperCase() + level.slice(1)}
+                  </button>
+                ))}
+              </div>
+
+              {/* Starter Prompts Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(() => {
+                  const allPrompts = getStarterPrompts(guideConcept || 'general', selectedLevel);
+                  const conceptPrompts = allPrompts.filter(p => p.concept === (guideConcept || 'general'));
+                  const otherPrompts = allPrompts.filter(p => p.concept !== (guideConcept || 'general'));
+                  
+                  // Prioritize concept-specific prompts when coming from guide
+                  const displayPrompts = fromGuide && conceptPrompts.length > 0 
+                    ? [...conceptPrompts, ...otherPrompts].slice(0, 6)
+                    : allPrompts.slice(0, 4);
+                  
+                  return displayPrompts.map((starter) => {
+                    const isFromGuideConcept = fromGuide && starter.concept === (guideConcept || 'general');
+                    
+                    return (
+                      <div
+                        key={starter.id}
+                        className={`border rounded-md p-4 hover:border-gray-300 transition-colors cursor-pointer ${
+                          isFromGuideConcept 
+                            ? 'bg-green-50 border-green-200 hover:border-green-300' 
+                            : 'bg-white border-gray-200'
+                        }`}
+                        onClick={() => setUserPrompt(starter.prompt)}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <h4 className="font-medium text-gray-900">{starter.title}</h4>
+                          {isFromGuideConcept && (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full ml-2 flex-shrink-0">
+                              Guide
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-3">{starter.description}</p>
+                        <p className="text-sm text-gray-800 line-clamp-3">{starter.prompt}</p>
+                        <div className="mt-2 flex items-center justify-between">
+                          <span className="text-xs text-blue-600 font-medium">
+                            {getConceptDisplayName(starter.concept)}
+                          </span>
+                          <span className="text-xs text-gray-500">Click to use</span>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+              
+              {getStarterPrompts(guideConcept || 'general', selectedLevel).length === 0 && (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  No starter prompts available for this level. Try a different skill level.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
       {/* Lab Interface */}
@@ -356,11 +564,25 @@ export default function PracticeBasicsLab() {
                   </option>
                 ))}
               </select>
-              {selectedModelInfo && (
-                <p id="model-info" className="mt-1 text-sm text-gray-500">
-                  Max tokens: {selectedModelInfo.maxTokens} • Source: {getSourceBadge(selectedModelInfo.source)}
-                </p>
-              )}
+              {selectedModelInfo && (() => {
+                const modelStatus = getModelStatus(selectedModelInfo.id);
+                return (
+                  <div id="model-info" className="mt-1 text-sm">
+                    <p className="text-gray-500">
+                      Max tokens: {selectedModelInfo.maxTokens} • Source: {getSourceBadge(selectedModelInfo.source)}
+                    </p>
+                    <p className={`text-xs ${
+                      modelStatus.source === 'hosted' ? 'text-green-600' :
+                      modelStatus.source === 'local' ? 'text-blue-600' :
+                      'text-orange-600'
+                    }`}>
+                      {modelStatus.source === 'hosted' && '✨ Real AI responses via API'}
+                      {modelStatus.source === 'local' && '💻 Real AI responses in browser'}
+                      {modelStatus.source === 'sample' && '📦 Sample responses for demo'}
+                    </p>
+                  </div>
+                );
+              })()}
             </>
           )}
         </div>
@@ -394,7 +616,7 @@ export default function PracticeBasicsLab() {
               display: 'block',
               width: '100%',
               padding: tokens.spacing[3],
-              fontSize: tokens.typography.fontSize.sm,
+              fontSize: '16px', // Prevents zoom on iOS
               lineHeight: tokens.typography.lineHeight.normal,
               color: tokens.colors.text.secondary,
               backgroundColor: tokens.colors.background.primary,
@@ -404,6 +626,11 @@ export default function PracticeBasicsLab() {
               outline: 'none',
               resize: 'vertical' as const,
               fontFamily: tokens.typography.fontFamily.sans.join(', '),
+              minHeight: tokens.touchTarget.comfortable,
+              touchAction: 'manipulation',
+              WebkitAppearance: 'none',
+              MozAppearance: 'none',
+              appearance: 'none',
             }}
             onFocus={(e) => {
               e.currentTarget.style.borderColor = tokens.colors.border.focus;
@@ -494,7 +721,10 @@ export default function PracticeBasicsLab() {
             aria-describedby="run-button-help"
           >
             <span className="btn-text">
-              {isSubmitting ? 'Creating Attempt...' : evaluationStatus.isPolling ? 'Evaluating...' : 'Run'}
+              {isSubmitting ? 'Creating Attempt...' : 
+               evaluationStatus.status === AttemptStatus.QUEUED ? 'Queued...' :
+               evaluationStatus.status === AttemptStatus.RUNNING || evaluationStatus.isPolling ? 'Evaluating...' : 
+               'Run'}
             </span>
           </button>
           <p id="run-button-help" className="sr-only">
@@ -502,47 +732,98 @@ export default function PracticeBasicsLab() {
           </p>
         </div>
 
-        {/* Evaluation Status */}
-        {evaluationStatus.status === 'processing' && (
+        {/* Evaluation Status - All Six States */}
+        {evaluationStatus.status === AttemptStatus.QUEUED && (
           <StatusIndicator
-            status="processing"
+            status={AttemptStatus.QUEUED}
+            title="Request Queued"
+            message="Your prompt has been queued for processing. It will begin shortly."
+            showSpinner={false}
+          />
+        )}
+
+        {(evaluationStatus.status === AttemptStatus.RUNNING || evaluationStatus.status === 'processing') && (
+          <StatusIndicator
+            status={AttemptStatus.RUNNING}
             title="Evaluating your prompt..."
             message="The model is processing your prompt and generating a response. This may take a few moments."
             showSpinner={true}
           />
         )}
 
-        {evaluationStatus.status === 'timeout' && (
+        {evaluationStatus.status === AttemptStatus.PARTIAL && (
           <StatusIndicator
-            status="timeout"
+            status={AttemptStatus.PARTIAL}
+            title="Partial Results Available"
+            message="Some results are ready while others are still processing. You can review what's available below."
+            partialResults={evaluationStatus.partialResults}
+            onRetry={handleRetry}
+          />
+        )}
+
+        {evaluationStatus.status === AttemptStatus.TIMEOUT && (
+          <StatusIndicator
+            status={AttemptStatus.TIMEOUT}
             title="Evaluation Timeout"
-            message="The evaluation is taking longer than expected. It may still complete in the background."
+            message="The evaluation is taking longer than expected. It may still complete in the background, or you can retry with a new attempt."
+            onRetry={handleRetry}
           />
         )}
 
         {/* Evaluation Error */}
-        {evaluationStatus.status === 'failed' && (
-          <ErrorBanner
-            type="error"
-            title="Evaluation Failed"
-            message={evaluationStatus.error?.message || 'An error occurred while processing your prompt.'}
-            onRetry={evaluationStatus.canRetry ? handleRetry : undefined}
-            retryLabel="Retry Evaluation"
-            errorCode={evaluationStatus.error?.code}
-            timestamp={evaluationStatus.error?.timestamp}
-            showDetails={true}
-            details={`Attempt ID: ${currentAttemptId}\nModel: ${selectedModel}\nRetry count: ${evaluationStatus.retryCount}`}
-          />
+        {(evaluationStatus.status === AttemptStatus.ERROR || evaluationStatus.status === 'failed') && (
+          <div className="space-y-4">
+            <StatusIndicator
+              status={AttemptStatus.ERROR}
+              title="Evaluation Failed"
+              message={evaluationStatus.error?.message || 'An error occurred while processing your prompt.'}
+              onRetry={evaluationStatus.canRetry ? handleRetry : undefined}
+            />
+            <ErrorBanner
+              type="error"
+              title="Error Details"
+              message={evaluationStatus.error?.message || 'An error occurred while processing your prompt.'}
+              onRetry={evaluationStatus.canRetry ? handleRetry : undefined}
+              retryLabel="Retry Evaluation"
+              errorCode={evaluationStatus.error?.code}
+              timestamp={evaluationStatus.error?.timestamp}
+              showDetails={true}
+              details={`Attempt ID: ${currentAttemptId}\nModel: ${selectedModel}\nRetry count: ${evaluationStatus.retryCount}`}
+            />
+          </div>
         )}
 
         {/* Results Display */}
-        {evaluationStatus.status === 'completed' && evaluationStatus.evaluation && (
+        {(((evaluationStatus.status === 'completed' || evaluationStatus.status === AttemptStatus.SUCCESS) && evaluationStatus.evaluation) || 
+         (evaluationStatus.status === AttemptStatus.PARTIAL && (evaluationStatus.evaluation || evaluationStatus.partialResults))) && (
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Results</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-medium text-gray-900">Results</h2>
+                <div className="flex items-center space-x-3">
+                  {evaluationStatus.status === AttemptStatus.PARTIAL && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                      Partial Results
+                    </span>
+                  )}
+                  {fromGuide && guideSlug && (
+                    <Link
+                      href={`/guides/${guideSlug}`}
+                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      📚 Back to Guide
+                    </Link>
+                  )}
+                </div>
+              </div>
+              {fromGuide && (
+                <p className="text-sm text-gray-600 mt-2">
+                  Great job practicing! Return to the guide to continue learning or try more examples.
+                </p>
+              )}
             </div>
             
-            {evaluationStatus.evaluation.perModelResults.map((result, index) => (
+            {(evaluationStatus.evaluation?.results || evaluationStatus.partialResults || []).map((result: ModelResult, index: number) => (
               <div key={index} className="px-6 py-4">
                 {/* Model Info */}
                 <div className="flex items-center justify-between mb-4">
@@ -551,24 +832,24 @@ export default function PracticeBasicsLab() {
                       {availableModels.find(m => m.id === result.modelId)?.name || result.modelId}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {getSourceBadge(result.source)} • {result.latencyMs}ms
-                      {result.usageTokens && ` • ${result.usageTokens} tokens`}
+                      {getSourceBadge(result.source)} • {result.latency}ms
+                      {result.tokenCount && ` • ${result.tokenCount} tokens`}
                     </p>
                   </div>
                   
                   {/* Score Badge */}
-                  {result.score !== undefined && (
+                  {result.scores?.total !== undefined && (
                     <div className="text-right">
                       <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                        result.score >= 8 ? 'bg-green-100 text-green-800' :
-                        result.score >= 6 ? 'bg-yellow-100 text-yellow-800' :
+                        result.scores.total >= 8 ? 'bg-green-100 text-green-800' :
+                        result.scores.total >= 6 ? 'bg-yellow-100 text-yellow-800' :
                         'bg-red-100 text-red-800'
                       }`}>
-                        Score: {result.score}/10
+                        Score: {result.scores.total}/10
                       </div>
-                      {result.breakdown && (
+                      {result.scores && (
                         <p className="text-xs text-gray-500 mt-1">
-                          Clarity: {result.breakdown.clarity}/5 • Completeness: {result.breakdown.completeness}/5
+                          Clarity: {result.scores.clarity}/5 • Completeness: {result.scores.completeness}/5
                         </p>
                       )}
                     </div>
@@ -579,15 +860,15 @@ export default function PracticeBasicsLab() {
                 <div className="mb-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Response:</h4>
                   <div className="bg-gray-50 rounded-md p-3 text-sm text-gray-900 whitespace-pre-wrap">
-                    {result.text}
+                    {result.response}
                   </div>
                 </div>
 
                 {/* Improvement Notes */}
-                {result.notes && (
-                  <div className="bg-blue-50 rounded-md p-3">
-                    <h4 className="text-sm font-medium text-blue-800 mb-1">Improvement Suggestions:</h4>
-                    <p className="text-sm text-blue-700">{result.notes}</p>
+                {result.feedback?.explanation && (
+                  <div className="bg-blue-50 rounded-md p-3 border border-blue-200">
+                    <h4 className="text-sm font-medium text-blue-800 mb-1">Suggestions:</h4>
+                    <p className="text-sm text-blue-700">{result.feedback.explanation}</p>
                   </div>
                 )}
               </div>
@@ -598,12 +879,23 @@ export default function PracticeBasicsLab() {
 
       {/* Navigation */}
       <div className="mt-8 pt-6 border-t border-gray-200">
-        <a
-          href="/"
-          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-        >
-          ← Back to Home
-        </a>
+        <div className="flex justify-between items-center">
+          <Link
+            href="/"
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+          >
+            ← Back to Home
+          </Link>
+          
+          {fromGuide && guideSlug && (
+            <Link
+              href={`/guides/${guideSlug}`}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            >
+              Back to Guide →
+            </Link>
+          )}
+        </div>
       </div>
     </div>
     </>

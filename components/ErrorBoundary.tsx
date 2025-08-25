@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { tokens } from '@/styles/tokens';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -58,35 +59,134 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
       // Default error UI
       return (
-        <div className="error-boundary">
-          <div className="error-boundary-content">
-            <div className="error-icon">⚠️</div>
-            <h2 className="error-title">Something went wrong</h2>
-            <p className="error-message">
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '400px',
+          padding: tokens.spacing[8],
+          backgroundColor: tokens.colors.background.secondary,
+        }}>
+          <div style={{
+            maxWidth: '500px',
+            textAlign: 'center',
+            backgroundColor: tokens.colors.background.primary,
+            padding: tokens.spacing[8],
+            borderRadius: tokens.borderRadius.xl,
+            boxShadow: tokens.boxShadow.lg,
+            border: `1px solid ${tokens.colors.border.light}`,
+          }}>
+            <div style={{
+              fontSize: tokens.typography.fontSize['3xl'],
+              marginBottom: tokens.spacing[4],
+            }}>⚠️</div>
+            <h2 style={{
+              fontSize: tokens.typography.fontSize.xl,
+              fontWeight: tokens.typography.fontWeight.semibold,
+              color: tokens.colors.text.primary,
+              marginBottom: tokens.spacing[4],
+            }}>Something went wrong</h2>
+            <p style={{
+              fontSize: tokens.typography.fontSize.base,
+              color: tokens.colors.text.secondary,
+              lineHeight: tokens.typography.lineHeight.relaxed,
+              marginBottom: tokens.spacing[6],
+            }}>
               An unexpected error occurred. Please try refreshing the page or contact support if the problem persists.
             </p>
             
-            <div className="error-actions">
+            <div style={{
+              display: 'flex',
+              gap: tokens.spacing[3],
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+            }}>
               <button 
                 onClick={this.resetError}
-                className="btn btn-primary"
                 type="button"
+                style={{
+                  backgroundColor: tokens.colors.primary[600],
+                  color: tokens.colors.text.inverse,
+                  padding: `${tokens.spacing[3]} ${tokens.spacing[6]}`,
+                  borderRadius: tokens.borderRadius.md,
+                  border: 'none',
+                  fontSize: tokens.typography.fontSize.sm,
+                  fontWeight: tokens.typography.fontWeight.medium,
+                  cursor: 'pointer',
+                  transition: `background-color ${tokens.animation.duration.normal} ${tokens.animation.easing.inOut}`,
+                  minHeight: tokens.touchTarget.comfortable,
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = tokens.colors.primary[700]}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = tokens.colors.primary[600]}
+                onFocus={(e) => {
+                  e.currentTarget.style.outline = `${tokens.focus.ring.width} ${tokens.focus.ring.style} ${tokens.focus.ring.color}`;
+                  e.currentTarget.style.outlineOffset = tokens.focus.ring.offset;
+                }}
+                onBlur={(e) => e.currentTarget.style.outline = 'none'}
               >
                 Try Again
               </button>
               <button 
                 onClick={() => window.location.reload()}
-                className="btn btn-outline"
                 type="button"
+                style={{
+                  backgroundColor: 'transparent',
+                  color: tokens.colors.primary[600],
+                  padding: `${tokens.spacing[3]} ${tokens.spacing[6]}`,
+                  borderRadius: tokens.borderRadius.md,
+                  border: `1px solid ${tokens.colors.primary[600]}`,
+                  fontSize: tokens.typography.fontSize.sm,
+                  fontWeight: tokens.typography.fontWeight.medium,
+                  cursor: 'pointer',
+                  transition: `all ${tokens.animation.duration.normal} ${tokens.animation.easing.inOut}`,
+                  minHeight: tokens.touchTarget.comfortable,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = tokens.colors.primary[600];
+                  e.currentTarget.style.color = tokens.colors.text.inverse;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = tokens.colors.primary[600];
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.outline = `${tokens.focus.ring.width} ${tokens.focus.ring.style} ${tokens.focus.ring.color}`;
+                  e.currentTarget.style.outlineOffset = tokens.focus.ring.offset;
+                }}
+                onBlur={(e) => e.currentTarget.style.outline = 'none'}
               >
                 Refresh Page
               </button>
             </div>
 
             {process.env.NODE_ENV === 'development' && this.state.error && (
-              <details className="error-details">
-                <summary>Error Details (Development)</summary>
-                <pre className="error-stack">
+              <details style={{
+                marginTop: tokens.spacing[6],
+                textAlign: 'left',
+                backgroundColor: tokens.colors.neutral[50],
+                padding: tokens.spacing[4],
+                borderRadius: tokens.borderRadius.md,
+                border: `1px solid ${tokens.colors.neutral[200]}`,
+              }}>
+                <summary style={{
+                  cursor: 'pointer',
+                  fontWeight: tokens.typography.fontWeight.medium,
+                  color: tokens.colors.text.primary,
+                  marginBottom: tokens.spacing[2],
+                }}>Error Details (Development)</summary>
+                <pre style={{
+                  fontSize: tokens.typography.fontSize.xs,
+                  fontFamily: tokens.typography.fontFamily.mono.join(', '),
+                  color: tokens.colors.text.secondary,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  margin: 0,
+                  padding: tokens.spacing[2],
+                  backgroundColor: tokens.colors.neutral[100],
+                  borderRadius: tokens.borderRadius.base,
+                  overflow: 'auto',
+                  maxHeight: '200px',
+                }}>
                   {this.state.error.toString()}
                   {this.state.errorInfo?.componentStack}
                 </pre>

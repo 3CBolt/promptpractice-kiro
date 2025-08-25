@@ -4,9 +4,12 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import { validateFilePath } from '@/lib/validation';
 
+import { AttemptStatus } from '@/types/contracts';
+
 export interface EvaluationStatusResponse {
-  status: 'processing' | 'completed' | 'failed';
+  status: AttemptStatus | 'processing' | 'completed' | 'failed';
   evaluation?: any;
+  partialResults?: any[];
   error?: {
     message: string;
     code?: string;
@@ -64,9 +67,15 @@ export async function GET(
     if (existsSync(evaluationPath)) {
       try {
         const evaluation = await readEvaluation(attemptId);
+        
+        // Check if this is a partial result
+        const isPartial = evaluation?.status === AttemptStatus.PARTIAL || 
+                         (evaluation?.results && evaluation.results.some((result: any) => !result.response || result.response === ''));
+        
         const response: EvaluationStatusResponse = {
-          status: 'completed',
+          status: isPartial ? AttemptStatus.PARTIAL : AttemptStatus.SUCCESS,
           evaluation,
+          partialResults: isPartial ? evaluation?.results : undefined,
           timestamp: new Date().toISOString()
         };
         return NextResponse.json(response);
@@ -84,7 +93,7 @@ export async function GET(
       try {
         const errorData = JSON.parse(require('fs').readFileSync(errorPath, 'utf8'));
         const response: EvaluationStatusResponse = {
-          status: 'failed',
+          status: errorData.code === 'TIMEOUT' ? AttemptStatus.TIMEOUT : AttemptStatus.ERROR,
           error: {
             message: errorData.error || 'Evaluation failed',
             code: errorData.code || 'EVALUATION_FAILED',
@@ -96,7 +105,7 @@ export async function GET(
       } catch (error) {
         console.error(`Error reading error file ${attemptId}:`, error);
         const response: EvaluationStatusResponse = {
-          status: 'failed',
+          status: AttemptStatus.ERROR,
           error: {
             message: 'Evaluation failed with unknown error',
             code: 'UNKNOWN_ERROR'
@@ -115,9 +124,11 @@ export async function GET(
       );
     }
 
-    // Attempt exists but no evaluation yet - still processing
+    // Attempt exists but no evaluation yet - check if queued or running
+    // For now, we'll assume it's running since we don't have a separate queued state file
+    // In a real system, you might check a queue status or have separate state tracking
     const response: EvaluationStatusResponse = {
-      status: 'processing',
+      status: AttemptStatus.RUNNING,
       timestamp: new Date().toISOString()
     };
     return NextResponse.json(response);

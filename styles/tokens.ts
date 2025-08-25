@@ -306,13 +306,99 @@ export const tokens = {
     tooltip: 1080,
   },
 
-  // Breakpoints for responsive design
+  // Breakpoints for responsive design (mobile-first)
   breakpoints: {
-    sm: '640px',
-    md: '768px',
-    lg: '1024px',
-    xl: '1280px',
-    '2xl': '1536px',
+    xs: '320px',   // Small phones
+    sm: '480px',   // Medium phones
+    md: '640px',   // Large phones / small tablets
+    lg: '768px',   // Tablets
+    xl: '1024px',  // Small laptops
+    '2xl': '1280px', // Large laptops
+    '3xl': '1536px', // Desktops
+  },
+
+  // Touch target sizes for mobile accessibility (WCAG AA compliance)
+  touchTarget: {
+    minimum: '44px',    // WCAG AA minimum
+    comfortable: '48px', // Recommended comfortable size
+    large: '56px',      // Large touch targets
+    extraLarge: '64px', // Extra large for primary actions
+  },
+
+  // Mobile-specific spacing system
+  mobile: {
+    padding: {
+      xs: '0.5rem',   // 8px - tight spacing
+      sm: '0.75rem',  // 12px - compact spacing
+      md: '1rem',     // 16px - standard spacing
+      lg: '1.5rem',   // 24px - comfortable spacing
+      xl: '2rem',     // 32px - generous spacing
+    },
+    margin: {
+      xs: '0.5rem',   // 8px - tight margins
+      sm: '0.75rem',  // 12px - compact margins
+      md: '1rem',     // 16px - standard margins
+      lg: '1.5rem',   // 24px - comfortable margins
+      xl: '2rem',     // 32px - generous margins
+    },
+    fontSize: {
+      xs: '0.875rem', // 14px - minimum readable on mobile
+      sm: '1rem',     // 16px - base mobile size (prevents zoom on iOS)
+      md: '1.125rem', // 18px - comfortable reading
+      lg: '1.25rem',  // 20px - headings
+      xl: '1.5rem',   // 24px - large headings
+    },
+    lineHeight: {
+      tight: '1.2',   // Tight line height for mobile
+      normal: '1.4',  // Normal line height for mobile
+      relaxed: '1.6', // Relaxed line height for mobile
+    },
+    // Mobile-specific grid and layout
+    grid: {
+      columns: {
+        single: '1fr',
+        double: 'repeat(2, 1fr)',
+        auto: 'repeat(auto-fit, minmax(280px, 1fr))',
+      },
+      gap: {
+        xs: '0.5rem',
+        sm: '0.75rem',
+        md: '1rem',
+        lg: '1.5rem',
+      },
+    },
+  },
+
+  // Responsive typography scale
+  responsiveTypography: {
+    // Fluid typography that scales with viewport
+    fluidScale: {
+      xs: 'clamp(0.75rem, 2vw, 0.875rem)',   // 12-14px
+      sm: 'clamp(0.875rem, 2.5vw, 1rem)',    // 14-16px
+      base: 'clamp(1rem, 3vw, 1.125rem)',    // 16-18px
+      lg: 'clamp(1.125rem, 3.5vw, 1.25rem)', // 18-20px
+      xl: 'clamp(1.25rem, 4vw, 1.5rem)',     // 20-24px
+      '2xl': 'clamp(1.5rem, 5vw, 2rem)',     // 24-32px
+      '3xl': 'clamp(1.875rem, 6vw, 2.5rem)', // 30-40px
+    },
+  },
+
+  // Mobile interaction states
+  mobileInteraction: {
+    // Tap highlight colors
+    tapHighlight: {
+      primary: 'rgba(37, 99, 235, 0.3)',
+      success: 'rgba(22, 163, 74, 0.3)',
+      warning: 'rgba(217, 119, 6, 0.3)',
+      error: 'rgba(220, 38, 38, 0.3)',
+      transparent: 'transparent',
+    },
+    // Touch feedback timing
+    feedback: {
+      fast: '100ms',
+      normal: '150ms',
+      slow: '200ms',
+    },
   },
 } as const;
 

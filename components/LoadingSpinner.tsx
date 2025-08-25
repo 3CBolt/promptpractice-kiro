@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { tokens } from '@/styles/tokens';
 
 interface LoadingSpinnerProps {
   size?: 'small' | 'medium' | 'large';
@@ -15,35 +16,96 @@ export default function LoadingSpinner({
   text,
   className = '' 
 }: LoadingSpinnerProps) {
-  const sizeClasses = {
-    small: 'w-4 h-4 border-2',
-    medium: 'w-8 h-8 border-2',
-    large: 'w-12 h-12 border-3'
+  const getSizeStyles = () => {
+    switch (size) {
+      case 'small':
+        return {
+          width: tokens.spacing[4],
+          height: tokens.spacing[4],
+          borderWidth: '2px',
+        };
+      case 'large':
+        return {
+          width: tokens.spacing[12],
+          height: tokens.spacing[12],
+          borderWidth: '3px',
+        };
+      default: // medium
+        return {
+          width: tokens.spacing[8],
+          height: tokens.spacing[8],
+          borderWidth: '2px',
+        };
+    }
   };
 
-  const colorClasses = {
-    primary: 'border-gray-200 border-t-blue-600',
-    secondary: 'border-gray-200 border-t-gray-600',
-    white: 'border-gray-400 border-t-white'
+  const getColorStyles = () => {
+    switch (color) {
+      case 'secondary':
+        return {
+          borderColor: tokens.colors.neutral[200],
+          borderTopColor: tokens.colors.neutral[600],
+        };
+      case 'white':
+        return {
+          borderColor: tokens.colors.neutral[400],
+          borderTopColor: tokens.colors.text.inverse,
+        };
+      default: // primary
+        return {
+          borderColor: tokens.colors.neutral[200],
+          borderTopColor: tokens.colors.primary[600],
+        };
+    }
   };
+
+  const sizeStyles = getSizeStyles();
+  const colorStyles = getColorStyles();
 
   return (
-    <div className={`flex flex-col items-center justify-center ${className}`}>
+    <div 
+      className={className}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
       <div 
-        className={`
-          ${sizeClasses[size]} 
-          ${colorClasses[color]} 
-          rounded-full animate-spin
-        `}
+        style={{
+          ...sizeStyles,
+          ...colorStyles,
+          borderRadius: tokens.borderRadius.full,
+          borderStyle: 'solid',
+          animation: 'spin 1s linear infinite',
+        }}
         role="status"
         aria-label={text || 'Loading'}
       />
       {text && (
-        <p className="mt-2 text-sm text-gray-600 animate-pulse">
+        <p style={{
+          marginTop: tokens.spacing[2],
+          fontSize: tokens.typography.fontSize.sm,
+          color: tokens.colors.text.secondary,
+          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        }}>
           {text}
         </p>
       )}
-      <span className="sr-only">{text || 'Loading...'}</span>
+      <span style={{
+        position: 'absolute',
+        width: '1px',
+        height: '1px',
+        padding: 0,
+        margin: '-1px',
+        overflow: 'hidden',
+        clip: 'rect(0, 0, 0, 0)',
+        whiteSpace: 'nowrap',
+        border: 0,
+      }}>
+        {text || 'Loading...'}
+      </span>
     </div>
   );
 }
@@ -64,12 +126,14 @@ export function Skeleton({
 }: SkeletonProps) {
   return (
     <div 
-      className={`
-        skeleton bg-gray-200 
-        ${rounded ? 'rounded-full' : 'rounded'} 
-        ${className}
-      `}
-      style={{ width, height }}
+      className={className}
+      style={{
+        width,
+        height,
+        backgroundColor: tokens.colors.neutral[200],
+        borderRadius: rounded ? tokens.borderRadius.full : tokens.borderRadius.base,
+        animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      }}
       role="status"
       aria-label="Loading content"
     />
@@ -89,12 +153,30 @@ export function LoadingCard({
   className = '' 
 }: LoadingCardProps) {
   return (
-    <div className={`animate-pulse ${className}`}>
-      <div className="flex space-x-4">
+    <div 
+      className={className}
+      style={{
+        animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      }}
+    >
+      <div style={{
+        display: 'flex',
+        gap: tokens.spacing[4],
+      }}>
         {showAvatar && (
-          <Skeleton width="3rem" height="3rem" rounded className="flex-shrink-0" />
+          <Skeleton 
+            width={tokens.spacing[12]} 
+            height={tokens.spacing[12]} 
+            rounded 
+            className="flex-shrink-0" 
+          />
         )}
-        <div className="flex-1 space-y-2">
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: tokens.spacing[2],
+        }}>
           <Skeleton height="1rem" width="75%" />
           {Array.from({ length: lines - 1 }).map((_, index) => (
             <Skeleton 

@@ -44,7 +44,7 @@ export async function validateAttemptFile(attemptId: string): Promise<Validation
     }
 
     // Validate required fields
-    const requiredFields = ['id', 'labId', 'userPrompt', 'models', 'createdAt'];
+    const requiredFields = ['attemptId', 'labId', 'userPrompt', 'models', 'timestamp'];
     for (const field of requiredFields) {
       if (!attempt[field as keyof Attempt]) {
         result.isValid = false;
@@ -53,9 +53,9 @@ export async function validateAttemptFile(attemptId: string): Promise<Validation
     }
 
     // Validate field types
-    if (typeof attempt.id !== 'string') {
+    if (typeof attempt.attemptId !== 'string') {
       result.isValid = false;
-      result.errors.push('id must be a string');
+      result.errors.push('attemptId must be a string');
     }
 
     if (typeof attempt.labId !== 'string') {
@@ -81,12 +81,12 @@ export async function validateAttemptFile(attemptId: string): Promise<Validation
       result.errors.push('systemPrompt must be a string if provided');
     }
 
-    // Validate createdAt is a valid ISO string
+    // Validate timestamp is a valid ISO string
     try {
-      new Date(attempt.createdAt);
+      new Date(attempt.timestamp);
     } catch {
       result.isValid = false;
-      result.errors.push('createdAt must be a valid ISO date string');
+      result.errors.push('timestamp must be a valid ISO date string');
     }
 
     // Validate prompt lengths
@@ -133,7 +133,7 @@ export async function validateEvaluationFile(attemptId: string): Promise<Validat
     }
 
     // Validate required fields
-    const requiredFields = ['id', 'attemptId', 'perModelResults', 'createdAt'];
+    const requiredFields = ['attemptId', 'status', 'timestamp'];
     for (const field of requiredFields) {
       if (!evaluation[field as keyof Evaluation]) {
         result.isValid = false;
@@ -142,9 +142,9 @@ export async function validateEvaluationFile(attemptId: string): Promise<Validat
     }
 
     // Validate field types
-    if (typeof evaluation.id !== 'string') {
+    if (typeof evaluation.attemptId !== 'string') {
       result.isValid = false;
-      result.errors.push('id must be a string');
+      result.errors.push('attemptId must be a string');
     }
 
     if (typeof evaluation.attemptId !== 'string') {
@@ -152,31 +152,31 @@ export async function validateEvaluationFile(attemptId: string): Promise<Validat
       result.errors.push('attemptId must be a string');
     }
 
-    if (!Array.isArray(evaluation.perModelResults)) {
+    if (evaluation.results && !Array.isArray(evaluation.results)) {
       result.isValid = false;
-      result.errors.push('perModelResults must be an array');
-    } else {
+      result.errors.push('results must be an array');
+    } else if (evaluation.results) {
       // Validate each model result
-      evaluation.perModelResults.forEach((modelResult, index) => {
-        const requiredModelFields = ['modelId', 'text', 'latencyMs', 'source'];
+      evaluation.results.forEach((modelResult: any, index: number) => {
+        const requiredModelFields = ['modelId', 'response', 'latency', 'source'];
         for (const field of requiredModelFields) {
           if (!modelResult[field as keyof typeof modelResult]) {
             result.isValid = false;
-            result.errors.push(`Missing required field in perModelResults[${index}]: ${field}`);
+            result.errors.push(`Missing required field in results[${index}]: ${field}`);
           }
         }
 
         // Validate model result types
         if (typeof modelResult.modelId !== 'string') {
-          result.errors.push(`perModelResults[${index}].modelId must be a string`);
+          result.errors.push(`results[${index}].modelId must be a string`);
         }
 
-        if (typeof modelResult.text !== 'string') {
-          result.errors.push(`perModelResults[${index}].text must be a string`);
+        if (typeof modelResult.response !== 'string') {
+          result.errors.push(`results[${index}].response must be a string`);
         }
 
-        if (typeof modelResult.latencyMs !== 'number') {
-          result.errors.push(`perModelResults[${index}].latencyMs must be a number`);
+        if (typeof modelResult.latency !== 'number') {
+          result.errors.push(`results[${index}].latency must be a number`);
         }
 
         if (!['hosted', 'sample', 'local'].includes(modelResult.source)) {
@@ -198,12 +198,12 @@ export async function validateEvaluationFile(attemptId: string): Promise<Validat
       });
     }
 
-    // Validate createdAt is a valid ISO string
+    // Validate timestamp is a valid ISO string
     try {
-      new Date(evaluation.createdAt);
+      new Date(evaluation.timestamp);
     } catch {
       result.isValid = false;
-      result.errors.push('createdAt must be a valid ISO date string');
+      result.errors.push('timestamp must be a valid ISO date string');
     }
 
     result.details = evaluation;
@@ -298,10 +298,10 @@ export async function compareFileArtifacts(attemptId1: string, attemptId2: strin
       const attempt2Copy: any = { ...artifacts2.attempt };
       
       // Remove fields that should differ
-      delete attempt1Copy.id;
-      delete attempt2Copy.id;
-      delete attempt1Copy.createdAt;
-      delete attempt2Copy.createdAt;
+      delete attempt1Copy.attemptId;
+      delete attempt2Copy.attemptId;
+      delete attempt1Copy.timestamp;
+      delete attempt2Copy.timestamp;
 
       if (JSON.stringify(attempt1Copy) !== JSON.stringify(attempt2Copy)) {
         result.warnings.push('Attempt content differs (excluding IDs and timestamps)');
@@ -318,8 +318,8 @@ export async function compareFileArtifacts(attemptId1: string, attemptId2: strin
       delete eval2Copy.id;
       delete eval1Copy.attemptId;
       delete eval2Copy.attemptId;
-      delete eval1Copy.createdAt;
-      delete eval2Copy.createdAt;
+      delete eval1Copy.timestamp;
+      delete eval2Copy.timestamp;
 
       // Compare structure (scores may vary due to model randomness)
       if (eval1Copy.perModelResults.length !== eval2Copy.perModelResults.length) {
@@ -420,7 +420,7 @@ export async function testBypassFunctionality(): Promise<ValidationResult> {
     await writeAttempt(testAttempt);
 
     // Step 3: Validate the created attempt
-    const attemptValidation = await validateAttemptFile(testAttempt.id);
+    const attemptValidation = await validateAttemptFile(testAttempt.attemptId);
     if (!attemptValidation.isValid) {
       result.isValid = false;
       result.errors.push(...attemptValidation.errors);
@@ -428,7 +428,7 @@ export async function testBypassFunctionality(): Promise<ValidationResult> {
     result.warnings.push(...attemptValidation.warnings);
 
     result.details = {
-      testAttemptId: testAttempt.id,
+      testAttemptId: testAttempt.attemptId,
       environmentCheck: envValidation.details,
       attemptValidation: attemptValidation.details
     };

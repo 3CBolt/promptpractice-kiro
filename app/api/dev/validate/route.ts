@@ -70,7 +70,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const attemptValidation = validateAttempt(body.data);
         response = {
           isValid: attemptValidation.isValid,
-          errors: attemptValidation.errors,
+          errors: attemptValidation.errors || [],
           metadata: {
             validationLimits: VALIDATION_LIMITS
           }
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const evaluationValidation = validateEvaluation(body.data);
         response = {
           isValid: evaluationValidation.isValid,
-          errors: evaluationValidation.errors,
+          errors: evaluationValidation.errors || [],
           metadata: {
             validationLimits: VALIDATION_LIMITS
           }
@@ -144,11 +144,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       case 'file-path':
         const filePath = String(body.data);
-        const isValidPath = validateFilePath(filePath);
+        const pathValidation = validateFilePath(filePath);
         
         response = {
-          isValid: isValidPath,
-          errors: isValidPath ? [] : ['Invalid file path - potential security risk detected']
+          isValid: pathValidation.isValid,
+          errors: pathValidation.isValid ? [] : [pathValidation.error || 'Invalid file path']
         };
         break;
 

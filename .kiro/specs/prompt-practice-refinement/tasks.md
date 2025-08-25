@@ -54,7 +54,7 @@
 
 ## Sprint 1: Core UX (3-5 Days)
 
-- [ ] 6. Create clear lab workflow with visible Draft → Submit → Feedback progression
+- [x] 6. Create clear lab workflow with visible Draft → Submit → Feedback progression
   - Create `components/LabStepHeader.tsx` with numbered steps (1. Draft, 2. Submit, 3. Feedback) and progress indicators
   - Implement distinct visual states: Draft (editable), Submit (loading/processing), Feedback (results/retry)
   - Add contextual help text for each step ("Write your prompt", "Evaluating response", "Review and improve")
@@ -65,7 +65,7 @@
   - _Files: components/LabStepHeader.tsx, app/labs/practice-basics/page.tsx, app/labs/compare-basics/page.tsx_
   - _Effort: L, Dependencies: Design tokens, Risks: User flow complexity_
 
-- [ ] 7. Build comprehensive feedback system with educational reinforcement
+- [x] 7. Build comprehensive feedback system with educational reinforcement
   - Create `components/FeedbackPanel.tsx` with per-criterion explanations, specific example fixes, and improvement suggestions
   - Implement constructive feedback design using encouraging colors (blue, green) and avoiding punitive red/warning badges
   - Add "Resubmit" functionality that creates new attempt with fresh attemptId and preserves learning context
@@ -76,7 +76,7 @@
   - _Files: components/FeedbackPanel.tsx, lib/clientUtils.ts, lib/progress.ts_
   - _Effort: L, Dependencies: Design tokens, rubric content, guide content, Risks: Feedback quality and tone_
 
-- [ ] 8. Render all six status states in practice lab UI
+- [x] 8. Render all six status states in practice lab UI
   - Update practice lab to display queued, running, success, partial, error, timeout states
   - Implement partial results rendering with clear indicators for incomplete responses
   - Add appropriate loading states and error recovery suggestions
@@ -85,7 +85,7 @@
   - _Files: app/labs/practice-basics/page.tsx, components/StatusIndicator.tsx_
   - _Effort: M, Dependencies: Status contracts, Risks: State synchronization_
 
-- [ ] 9. Create comprehensive educational guide content with practical examples
+- [x] 9. Create comprehensive educational guide content with practical examples
   - Write complete `docs/guides/fundamentals.md` with prompt engineering basics, common mistakes, and 3+ practical examples
   - Write complete `docs/guides/chain-of-thought.md` with step-by-step reasoning techniques, before/after examples, and practice scenarios
   - Write complete `docs/guides/system-prompts.md` with role setting, context examples, and persona techniques
@@ -95,7 +95,7 @@
   - _Files: docs/guides/fundamentals.md, docs/guides/chain-of-thought.md, docs/guides/system-prompts.md_
   - _Effort: L, Dependencies: None, Risks: Content quality and educational effectiveness_
 
-- [ ] 10. Implement complete guide-to-lab learning flow with authentic practice
+- [x] 10. Implement complete guide-to-lab learning flow with authentic practice
   - Update guide CTA links to pass context (guide slug, example prompt) to labs with URL parameters
   - Modify lab pages to accept and prefill context from guide CTAs with clear "From Guide: [concept]" indicators
   - Add multiple starter prompt scaffolds in labs for different skill levels (beginner, intermediate)
@@ -106,18 +106,18 @@
   - _Files: app/guides/[slug]/page.tsx, app/labs/practice-basics/page.tsx, app/labs/compare-basics/page.tsx, lib/models/providers.ts_
   - _Effort: M, Dependencies: Guide content, model providers, Risks: Model response quality_
 
-- [ ] 11. Update rubric content and implement versioning
-  - Update `docs/rubric.md` with detailed v1.0 criteria definitions
-  - Implement rubric version pinning in evaluation logic
-  - Update evaluator to use versioned rubric criteria with constructive language
-  - Ensure feedback generation uses beginner-friendly, encouraging tone
+- [x] 11. Update rubric content and implement versioning ✅ COMPLETED
+  - ✅ Updated `docs/rubric.md` with detailed v1.0 criteria definitions
+  - ✅ Implemented rubric version pinning in evaluation logic
+  - ✅ Updated evaluator to use versioned rubric criteria with constructive language
+  - ✅ Ensured feedback generation uses beginner-friendly, encouraging tone
   - _Requirements: 2.1, 2.2, 2.4, 11.1_
   - _Files: docs/rubric.md, lib/evaluator.ts_
   - _Effort: M, Dependencies: None, Risks: Evaluation consistency_
 
 ## Sprint 2: Polish (2-3 Days)
 
-- [ ] 12. Create comprehensive progress tracking with motivation mechanics
+- [x] 12. Create comprehensive progress tracking with motivation mechanics
   - Create `app/progress/page.tsx` with visual progress bars for guide completion and lab mastery
   - Implement progress calculation based on guide reading time, lab submissions, and improvement over attempts
   - Add unlockable example prompts that become available after completing related guides and labs
@@ -129,7 +129,7 @@
   - _Files: app/progress/page.tsx, lib/progress.ts, components/ProgressBar.tsx, components/UnlockableContent.tsx_
   - _Effort: L, Dependencies: Global nav, guide/lab completion tracking, Risks: Motivation feature complexity_
 
-- [ ] 13. Implement polished guide layout with Markdown extensibility
+- [x] 13. Implement polished guide layout with Markdown extensibility
   - Update guide rendering to support tip/example callouts with consistent styling
   - Add proper heading hierarchy and semantic markup for accessibility
   - Implement linkable sections with anchor navigation
@@ -138,7 +138,7 @@
   - _Files: app/guides/[slug]/page.tsx, styles/guide-layout.css_
   - _Effort: M, Dependencies: Design tokens, Risks: Markdown parsing complexity_
 
-- [ ] 14. Add comprehensive accessibility compliance
+- [x] 14. Add comprehensive accessibility compliance
   - Implement visible focus rings on all interactive elements using design tokens
   - Verify 4.5:1 contrast ratio compliance across all UI components
   - Add ARIA labels and semantic markup for screen reader compatibility
@@ -147,7 +147,7 @@
   - _Files: styles/tokens.ts, components/*.tsx, app/globals.css_
   - _Effort: M, Dependencies: Design tokens, Risks: Accessibility testing complexity_
 
-- [ ] 15. Write comprehensive test suite for new functionality
+- [x] 15. Write comprehensive test suite for new functionality
   - Create schema validation tests for v1.0 attempt and evaluation schemas
   - Add state transition tests for all six status states and error scenarios
   - Implement accessibility tests for keyboard navigation and focus management
@@ -156,7 +156,7 @@
   - _Files: lib/__tests__/schemas.test.ts, lib/__tests__/state-transitions.test.ts, lib/__tests__/accessibility.test.ts, lib/__tests__/guide-lab-integration.test.ts_
   - _Effort: L, Dependencies: All core functionality, Risks: Test coverage gaps_
 
-- [ ] 16. Validate complete beginner learning experience end-to-end
+- [x] 16. Validate complete beginner learning experience end-to-end
   - Test full learning flow: Guide reading → CTA click → Lab prefill → Submit → Feedback → Resubmit → Progress tracking
   - Verify that each guide provides sufficient educational value with real examples and practical tips
   - Ensure labs feel authentic with meaningful model responses and constructive feedback
@@ -167,7 +167,7 @@
   - _Files: All guide, lab, and component files_
   - _Effort: M, Dependencies: All previous tasks, Risks: Learning experience gaps_
 
-- [ ] 17. Implement first-time learner onboarding flow
+- [x] 17. Implement first-time learner onboarding flow
   - Add "Start Here" indicator on homepage pointing to first guide with clear visual prominence
   - Create optional guided tooltip walkthrough for key interface elements (dismissible)
   - Implement localStorage to remember onboarding completion and user preferences
@@ -176,7 +176,7 @@
   - _Files: app/page.tsx, components/OnboardingTooltips.tsx, lib/onboarding.ts_
   - _Effort: M, Dependencies: Global nav, Risks: User experience complexity_
 
-- [ ] 18. Add lightweight attempt history and progress reflection
+- [x] 18. Add lightweight attempt history and progress reflection
   - Create attempt history storage in localStorage with size limits
   - Add "View History" section in Progress page showing past attempts with scores
   - Implement comparison view showing improvement over time with visual indicators
@@ -185,7 +185,7 @@
   - _Files: lib/history.ts, app/progress/page.tsx, components/HistoryView.tsx_
   - _Effort: M, Dependencies: Progress tracking, Risks: Storage management_
 
-- [ ] 19. Enhance feedback with example strong prompts
+- [x] 19. Enhance feedback with example strong prompts
   - Create curated library of example strong prompts for different concepts
   - Add "See Example" section in feedback panel with relevant strong prompt examples
   - Include explanations of why example prompts are effective with highlighted techniques
@@ -194,7 +194,7 @@
   - _Files: data/examples/strong-prompts.json, components/FeedbackPanel.tsx, lib/examples.ts_
   - _Effort: M, Dependencies: Feedback panel, guide content, Risks: Example quality and relevance_
 
-- [ ] 20. Implement comprehensive error handling and fallback strategies
+- [x] 20. Implement comprehensive error handling and fallback strategies
   - Add retry mechanisms for failed model loads with progressively smaller models
   - Implement detailed progress indicators with estimated time remaining for model loading
   - Create read-only demo mode with pre-generated responses when WebGPU unavailable
@@ -204,7 +204,7 @@
   - _Files: lib/models/webgpuModel.ts, components/ErrorFallback.tsx, lib/fallbackResponses.ts_
   - _Effort: M, Dependencies: Browser LLM implementation, Risks: Fallback experience quality_
 
-- [ ] 21. Ensure mobile-responsive design and touch optimization
+- [x] 21. Ensure mobile-responsive design and touch optimization
   - Update all layouts to be responsive with mobile-first approach using design tokens
   - Optimize touch targets to meet minimum 44px size requirements for accessibility
   - Test and optimize text input areas for mobile keyboards and autocorrect
@@ -214,7 +214,7 @@
   - _Files: styles/tokens.ts, app/globals.css, all component files_
   - _Effort: M, Dependencies: Design tokens, Risks: Mobile performance and compatibility_
 
-- [ ] 22. Apply design tokens across all remaining components
+- [x] 22. Apply design tokens across all remaining components
   - Update all card components to use consistent styling from design tokens
   - Apply token-based spacing and colors to status indicators and badges
   - Ensure consistent button and input styling across all lab interfaces

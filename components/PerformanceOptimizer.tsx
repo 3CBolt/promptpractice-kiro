@@ -40,10 +40,30 @@ export default function PerformanceOptimizer({ children }: PerformanceOptimizerP
 
   if (!isVisible) {
     return (
-      <div className="loading-skeleton">
-        <div className="skeleton" style={{ height: '60px', marginBottom: '2rem' }} />
-        <div className="skeleton" style={{ height: '200px', marginBottom: '1rem' }} />
-        <div className="skeleton" style={{ height: '200px' }} />
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem',
+        padding: '2rem',
+      }}>
+        <div style={{ 
+          height: '60px', 
+          backgroundColor: '#f0f0f0',
+          borderRadius: '4px',
+          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        }} />
+        <div style={{ 
+          height: '200px', 
+          backgroundColor: '#f0f0f0',
+          borderRadius: '4px',
+          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        }} />
+        <div style={{ 
+          height: '200px', 
+          backgroundColor: '#f0f0f0',
+          borderRadius: '4px',
+          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        }} />
       </div>
     );
   }
@@ -96,7 +116,14 @@ export function LazyLoad({ children, fallback, className = '' }: LazyLoadProps) 
 
   return (
     <div ref={ref} className={className}>
-      {isVisible ? children : fallback || <div className="skeleton" style={{ height: '200px' }} />}
+      {isVisible ? children : fallback || (
+        <div style={{ 
+          height: '200px', 
+          backgroundColor: '#f0f0f0',
+          borderRadius: '4px',
+          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        }} />
+      )}
     </div>
   );
 }

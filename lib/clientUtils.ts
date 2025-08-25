@@ -193,6 +193,43 @@ export async function retryApiCall<T>(
 }
 
 /**
+ * Resubmit functionality for feedback panel
+ */
+
+// Create a new attempt with preserved context for resubmission
+export function createResubmitAttempt(
+  originalAttempt: any,
+  newPrompt?: string
+): any {
+  const newAttemptId = generateAttemptId();
+  
+  return {
+    ...originalAttempt,
+    attemptId: newAttemptId,
+    userPrompt: newPrompt || originalAttempt.userPrompt,
+    timestamp: new Date().toISOString(),
+    context: {
+      ...originalAttempt.context,
+      isResubmit: true,
+      originalAttemptId: originalAttempt.attemptId
+    }
+  };
+}
+
+// Preserve learning context when resubmitting
+export function preserveLearningContext(
+  originalContext: any,
+  feedbackReceived: boolean = true
+): any {
+  return {
+    ...originalContext,
+    feedbackReceived,
+    resubmitCount: (originalContext?.resubmitCount || 0) + 1,
+    learningSession: originalContext?.learningSession || generateId()
+  };
+}
+
+/**
  * Enhanced error classification
  */
 

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Evaluation } from '@/types';
+import { Evaluation, AttemptStatus } from '@/types';
 
 export interface EvaluationStatusState {
-  status: 'idle' | 'processing' | 'completed' | 'failed' | 'timeout';
+  status: 'idle' | AttemptStatus | 'processing' | 'completed' | 'failed' | 'timeout';
   evaluation?: Evaluation;
+  partialResults?: any[];
   error?: {
     message: string;
     code?: string;
@@ -107,15 +108,28 @@ export function useEvaluationStatus(
         setConsecutiveErrors(0);
 
         switch (data.status) {
+          case AttemptStatus.SUCCESS:
           case 'completed':
             setState(prev => ({
               ...prev,
               status: 'completed',
               evaluation: data.evaluation,
+              error: undefined,
+              partialResults: undefined
+            }));
+            break;
+            
+          case AttemptStatus.PARTIAL:
+          case 'partial':
+            setState(prev => ({
+              ...prev,
+              status: AttemptStatus.PARTIAL,
+              partialResults: data.partialResults || data.evaluation?.results,
               error: undefined
             }));
             break;
             
+          case AttemptStatus.ERROR:
           case 'failed':
             setState(prev => ({
               ...prev,
@@ -128,8 +142,34 @@ export function useEvaluationStatus(
             }));
             break;
             
+          case AttemptStatus.TIMEOUT:
+          case 'timeout':
+            setState(prev => ({
+              ...prev,
+              status: 'timeout',
+              error: {
+                message: data.error?.message || 'Evaluation timed out',
+                code: data.error?.code || 'TIMEOUT',
+                timestamp: data.error?.timestamp || data.timestamp
+              }
+            }));
+            break;
+            
+          case AttemptStatus.QUEUED:
+          case 'queued':
+            setState(prev => ({
+              ...prev,
+              status: AttemptStatus.QUEUED
+            }));
+            break;
+            
+          case AttemptStatus.RUNNING:
+          case 'running':
           case 'processing':
-            // Continue polling - no state change needed
+            setState(prev => ({
+              ...prev,
+              status: 'processing'
+            }));
             break;
             
           default:

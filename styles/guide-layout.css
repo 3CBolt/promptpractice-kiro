@@ -1,0 +1,688 @@
+/**
+ * Guide Layout Styles
+ * 
+ * Polished layout for educational guides with Markdown extensibility.
+ * Uses design tokens for consistent typography, spacing, and accessibility.
+ */
+
+/* Import design tokens as CSS custom properties */
+:root {
+  /* Colors from design tokens */
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-success-50: #f0fdf4;
+  --color-success-600: #16a34a;
+  --color-warning-50: #fffbeb;
+  --color-warning-600: #d97706;
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #f9fafb;
+  --color-neutral-100: #f3f4f6;
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-600: #4b5563;
+  --color-neutral-700: #374151;
+  --color-neutral-800: #1f2937;
+  --color-neutral-900: #111827;
+  
+  /* Typography from design tokens */
+  --font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-family-mono: "JetBrains Mono", Monaco, Menlo, "Ubuntu Mono", Consolas, monospace;
+  
+  /* Spacing from design tokens */
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+  --spacing-16: 4rem;
+  --spacing-20: 5rem;
+  
+  /* Focus ring from design tokens */
+  --focus-ring: 2px solid #2563eb;
+  --focus-offset: 2px;
+  
+  /* Border radius */
+  --border-radius-md: 0.375rem;
+  --border-radius-lg: 0.5rem;
+  
+  /* Box shadow */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Guide Container */
+.guide-page {
+  font-family: var(--font-family-sans);
+  line-height: 1.6;
+  color: var(--color-neutral-800);
+}
+
+.guide-container {
+  max-width: 65ch; /* Optimal reading width */
+  margin: 0 auto;
+  padding: var(--spacing-8) var(--spacing-6);
+}
+
+/* Guide Header */
+.guide-header {
+  margin-bottom: var(--spacing-12);
+  border-bottom: 1px solid var(--color-neutral-200);
+  padding-bottom: var(--spacing-8);
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-primary-600);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: var(--spacing-4);
+  transition: color 150ms ease;
+}
+
+.back-link:hover {
+  color: var(--color-primary-700);
+}
+
+.back-link:focus {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--border-radius-md);
+}
+
+.guide-title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-neutral-900);
+  margin: 0;
+}
+
+/* Table of Contents */
+.guide-toc {
+  background: var(--color-neutral-50);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-6);
+  margin: var(--spacing-8) 0;
+}
+
+.guide-toc h3 {
+  margin: 0 0 var(--spacing-4) 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-neutral-700);
+}
+
+.guide-toc ul {
+  margin: 0;
+  padding-left: var(--spacing-5);
+  list-style: none;
+}
+
+.guide-toc li {
+  margin-bottom: var(--spacing-2);
+}
+
+.guide-toc a {
+  color: var(--color-primary-600);
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: color 150ms ease;
+}
+
+.guide-toc a:hover {
+  color: var(--color-primary-700);
+  text-decoration: underline;
+}
+
+.guide-toc a:focus {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--border-radius-md);
+}
+
+/* Guide Content */
+.guide-content {
+  margin-bottom: var(--spacing-16);
+}
+
+/* Typography Hierarchy */
+.guide-content h1 {
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-neutral-900);
+  margin: var(--spacing-16) 0 var(--spacing-6) 0;
+  scroll-margin-top: var(--spacing-20);
+}
+
+.guide-content h2 {
+  font-size: 1.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-neutral-900);
+  margin: var(--spacing-12) 0 var(--spacing-5) 0;
+  scroll-margin-top: var(--spacing-20);
+  border-bottom: 2px solid var(--color-neutral-200);
+  padding-bottom: var(--spacing-3);
+}
+
+.guide-content h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-neutral-800);
+  margin: var(--spacing-10) 0 var(--spacing-4) 0;
+  scroll-margin-top: var(--spacing-20);
+}
+
+.guide-content h4 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-neutral-800);
+  margin: var(--spacing-8) 0 var(--spacing-3) 0;
+  scroll-margin-top: var(--spacing-20);
+}
+
+.guide-content h5 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-neutral-700);
+  margin: var(--spacing-6) 0 var(--spacing-2) 0;
+  scroll-margin-top: var(--spacing-20);
+}
+
+.guide-content h6 {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-neutral-700);
+  margin: var(--spacing-5) 0 var(--spacing-2) 0;
+  scroll-margin-top: var(--spacing-20);
+}
+
+/* Anchor Links for Headings */
+.guide-content h1[id],
+.guide-content h2[id],
+.guide-content h3[id],
+.guide-content h4[id],
+.guide-content h5[id],
+.guide-content h6[id] {
+  position: relative;
+}
+
+.guide-content h1[id]:hover .anchor-link,
+.guide-content h2[id]:hover .anchor-link,
+.guide-content h3[id]:hover .anchor-link,
+.guide-content h4[id]:hover .anchor-link,
+.guide-content h5[id]:hover .anchor-link,
+.guide-content h6[id]:hover .anchor-link {
+  opacity: 1;
+}
+
+.anchor-link {
+  position: absolute;
+  left: -1.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 150ms ease;
+  color: var(--color-neutral-400);
+  text-decoration: none;
+  font-weight: normal;
+  font-size: 0.875em;
+}
+
+.anchor-link:hover {
+  color: var(--color-primary-600);
+}
+
+.anchor-link:focus {
+  opacity: 1;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--border-radius-md);
+}
+
+/* Paragraphs and Text */
+.guide-content p {
+  margin: var(--spacing-4) 0;
+  line-height: 1.7;
+}
+
+.guide-content strong {
+  font-weight: 600;
+  color: var(--color-neutral-900);
+}
+
+.guide-content em {
+  font-style: italic;
+}
+
+/* Lists */
+.guide-content ul,
+.guide-content ol {
+  margin: var(--spacing-4) 0;
+  padding-left: var(--spacing-6);
+}
+
+.guide-content li {
+  margin: var(--spacing-2) 0;
+  line-height: 1.6;
+}
+
+.guide-content li > ul,
+.guide-content li > ol {
+  margin: var(--spacing-2) 0;
+}
+
+/* Links */
+.guide-content a {
+  color: var(--color-primary-600);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  transition: color 150ms ease;
+}
+
+.guide-content a:hover {
+  color: var(--color-primary-700);
+}
+
+.guide-content a:focus {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--border-radius-md);
+}
+
+/* Code */
+.guide-content code {
+  font-family: var(--font-family-mono);
+  font-size: 0.875em;
+  background: var(--color-neutral-100);
+  padding: 0.125rem 0.25rem;
+  border-radius: var(--border-radius-md);
+  color: var(--color-neutral-800);
+}
+
+.guide-content pre {
+  background: var(--color-neutral-900);
+  color: var(--color-neutral-100);
+  padding: var(--spacing-4);
+  border-radius: var(--border-radius-lg);
+  overflow-x: auto;
+  margin: var(--spacing-6) 0;
+  font-family: var(--font-family-mono);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.guide-content pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* Blockquotes */
+.guide-content blockquote {
+  border-left: 4px solid var(--color-primary-500);
+  padding-left: var(--spacing-4);
+  margin: var(--spacing-6) 0;
+  font-style: italic;
+  color: var(--color-neutral-600);
+}
+
+.guide-content blockquote p {
+  margin: var(--spacing-2) 0;
+}
+
+/* Tip Callouts */
+.guide-content .tip-callout {
+  background: linear-gradient(135deg, var(--color-primary-50) 0%, var(--color-primary-100) 100%);
+  border: 1px solid var(--color-primary-200);
+  border-left: 4px solid var(--color-primary-500);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-5);
+  margin: var(--spacing-6) 0;
+  position: relative;
+}
+
+.guide-content .tip-callout::before {
+  content: "💡";
+  font-size: 1.25rem;
+  margin-right: var(--spacing-2);
+}
+
+.guide-content .tip-callout .tip-label {
+  font-weight: 600;
+  color: var(--color-primary-700);
+  margin-right: var(--spacing-2);
+}
+
+.guide-content .tip-callout p {
+  margin: var(--spacing-2) 0;
+  color: var(--color-primary-800);
+}
+
+.guide-content .tip-callout p:first-of-type {
+  margin-top: 0;
+}
+
+.guide-content .tip-callout p:last-of-type {
+  margin-bottom: 0;
+}
+
+/* Example Callouts */
+.guide-content .example-callout {
+  background: linear-gradient(135deg, var(--color-success-50) 0%, #f0fdf4 100%);
+  border: 1px solid #bbf7d0;
+  border-left: 4px solid var(--color-success-600);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-5);
+  margin: var(--spacing-6) 0;
+  position: relative;
+}
+
+.guide-content .example-callout::before {
+  content: "📝";
+  font-size: 1.25rem;
+  margin-right: var(--spacing-2);
+}
+
+.guide-content .example-callout .example-label {
+  font-weight: 600;
+  color: var(--color-success-700);
+  margin-right: var(--spacing-2);
+}
+
+.guide-content .example-callout p {
+  margin: var(--spacing-2) 0;
+  color: var(--color-success-800);
+}
+
+.guide-content .example-callout p:first-of-type {
+  margin-top: 0;
+}
+
+.guide-content .example-callout p:last-of-type {
+  margin-bottom: 0;
+}
+
+.guide-content .example-callout strong {
+  color: var(--color-success-900);
+}
+
+/* Warning Callouts */
+.guide-content .warning-callout {
+  background: linear-gradient(135deg, var(--color-warning-50) 0%, #fef3c7 100%);
+  border: 1px solid #fde68a;
+  border-left: 4px solid var(--color-warning-600);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-5);
+  margin: var(--spacing-6) 0;
+  position: relative;
+}
+
+.guide-content .warning-callout::before {
+  content: "⚠️";
+  font-size: 1.25rem;
+  margin-right: var(--spacing-2);
+}
+
+.guide-content .warning-callout .warning-label {
+  font-weight: 600;
+  color: var(--color-warning-700);
+  margin-right: var(--spacing-2);
+}
+
+.guide-content .warning-callout p {
+  margin: var(--spacing-2) 0;
+  color: var(--color-warning-800);
+}
+
+.guide-content .warning-callout p:first-of-type {
+  margin-top: 0;
+}
+
+.guide-content .warning-callout p:last-of-type {
+  margin-bottom: 0;
+}
+
+/* Practice CTAs */
+.practice-ctas {
+  background: linear-gradient(135deg, var(--color-primary-50) 0%, var(--color-primary-100) 100%);
+  border: 1px solid var(--color-primary-200);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-6);
+  margin: var(--spacing-12) 0;
+}
+
+.practice-ctas h3 {
+  color: var(--color-primary-900);
+  margin: 0 0 var(--spacing-4) 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.practice-ctas p {
+  color: var(--color-primary-700);
+  margin: 0 0 var(--spacing-4) 0;
+  font-size: 0.875rem;
+}
+
+.practice-ctas .cta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-4);
+}
+
+.practice-ctas .cta-card {
+  background: var(--color-neutral-0);
+  border: 1px solid var(--color-primary-300);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-4);
+  text-decoration: none;
+  transition: all 150ms ease;
+  display: block;
+}
+
+.practice-ctas .cta-card:hover {
+  border-color: var(--color-primary-400);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.practice-ctas .cta-card:focus {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.practice-ctas .cta-content {
+  display: flex;
+  align-items: flex-start;
+}
+
+.practice-ctas .cta-icon {
+  font-size: 1.5rem;
+  margin-right: var(--spacing-3);
+  flex-shrink: 0;
+}
+
+.practice-ctas .cta-text h4 {
+  font-weight: 500;
+  color: var(--color-neutral-900);
+  margin: 0 0 var(--spacing-1) 0;
+  font-size: 1rem;
+}
+
+.practice-ctas .cta-text p {
+  color: var(--color-neutral-600);
+  margin: 0 0 var(--spacing-1) 0;
+  font-size: 0.875rem;
+}
+
+.practice-ctas .cta-text .cta-highlight {
+  color: var(--color-primary-600);
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+/* Guide Navigation */
+.guide-navigation {
+  margin-top: var(--spacing-12);
+  padding-top: var(--spacing-8);
+  border-top: 1px solid var(--color-neutral-200);
+}
+
+.nav-links {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+}
+
+.nav-link {
+  flex: 1;
+  max-width: 20rem;
+  padding: var(--spacing-4);
+  border: 1px solid var(--color-neutral-300);
+  border-radius: var(--border-radius-md);
+  text-decoration: none;
+  transition: all 150ms ease;
+  display: block;
+}
+
+.nav-link:hover {
+  border-color: var(--color-neutral-400);
+  box-shadow: var(--shadow-sm);
+}
+
+.nav-link:focus {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.nav-previous {
+  text-align: left;
+}
+
+.nav-next {
+  text-align: right;
+}
+
+.nav-direction {
+  font-size: 0.875rem;
+  color: var(--color-neutral-500);
+  display: block;
+  margin-bottom: var(--spacing-1);
+}
+
+.nav-title {
+  font-weight: 500;
+  color: var(--color-neutral-900);
+  display: block;
+  font-size: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .guide-container {
+    padding: var(--spacing-6) var(--spacing-4);
+  }
+  
+  .guide-title {
+    font-size: 1.875rem;
+  }
+  
+  .guide-content h1 {
+    font-size: 1.875rem;
+  }
+  
+  .guide-content h2 {
+    font-size: 1.5rem;
+  }
+  
+  .guide-content h3 {
+    font-size: 1.25rem;
+  }
+  
+  .practice-ctas .cta-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .nav-links {
+    flex-direction: column;
+  }
+  
+  .nav-next {
+    text-align: left;
+  }
+  
+  .anchor-link {
+    display: none;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .guide-page {
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+  
+  .back-link,
+  .practice-ctas,
+  .guide-navigation {
+    display: none;
+  }
+  
+  .guide-content h1,
+  .guide-content h2,
+  .guide-content h3 {
+    break-after: avoid;
+  }
+  
+  .guide-content pre,
+  .tip-callout,
+  .example-callout,
+  .warning-callout {
+    break-inside: avoid;
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .tip-callout,
+  .example-callout,
+  .warning-callout,
+  .practice-ctas {
+    border-width: 2px;
+  }
+  
+  .guide-content a {
+    text-decoration-thickness: 2px;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .practice-ctas .cta-card,
+  .nav-link,
+  .back-link,
+  .guide-content a {
+    transition: none;
+  }
+  
+  .practice-ctas .cta-card:hover {
+    transform: none;
+  }
+}

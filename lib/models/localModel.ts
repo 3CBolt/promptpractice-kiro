@@ -1,4 +1,4 @@
-import { ModelResult } from '@/types';
+import { ModelResult, ModelSource } from '@/types';
 
 /**
  * Local model implementation with deterministic stub responses
@@ -122,9 +122,9 @@ export async function getLocalModelResult(
   
   return {
     modelId,
-    text: response.text,
-    latencyMs: response.latencyMs,
-    usageTokens: response.usageTokens,
-    source: 'sample' // Local models are marked as sample data
+    response: response.text,
+    latency: response.latencyMs,
+    tokenCount: response.usageTokens,
+    source: ModelSource.SAMPLE // Local models are marked as sample data
   };
 }

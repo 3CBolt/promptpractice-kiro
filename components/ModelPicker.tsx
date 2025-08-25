@@ -18,6 +18,9 @@ interface ModelPickerProps {
   showWebGPUModels?: boolean;
   onWebGPUModelSelect?: (modelId: string) => void;
   webgpuSupported?: boolean;
+  webgpuError?: string;
+  onRetryWebGPU?: () => void;
+  onEnterDemoMode?: () => void;
 }
 
 export default function ModelPicker({
@@ -30,7 +33,10 @@ export default function ModelPicker({
   'aria-describedby': ariaDescribedBy,
   showWebGPUModels = false,
   onWebGPUModelSelect,
-  webgpuSupported = false
+  webgpuSupported = false,
+  webgpuError,
+  onRetryWebGPU,
+  onEnterDemoMode
 }: ModelPickerProps) {
   const hostedAvailable = areHostedModelsAvailable();
   const [focusedModel, setFocusedModel] = useState<string | null>(null);
@@ -78,6 +84,10 @@ export default function ModelPicker({
     const announcements = document.getElementById('announcements');
     if (announcements) {
       announcements.textContent = message;
+      // Clear after announcement
+      setTimeout(() => {
+        announcements.textContent = '';
+      }, 1000);
     }
   };
 
@@ -134,9 +144,11 @@ export default function ModelPicker({
       style={{
         background: tokens.colors.background.primary,
         borderRadius: tokens.borderRadius.lg,
-        padding: tokens.spacing[6],
+        padding: tokens.mobile.padding.md,
         border: `1px solid ${tokens.colors.border.light}`,
         boxShadow: tokens.boxShadow.sm,
+        width: '100%',
+        maxWidth: '100%',
       }}
     >
       <div className="model-picker-header">
@@ -175,7 +187,65 @@ export default function ModelPicker({
           <p className="webgpu-description">
             This Lab runs a small open model in your browser. <strong>No setup needed.</strong>
           </p>
-          {!webgpuSupported && (
+          {webgpuError && (
+            <div className="webgpu-error-notice" role="alert" style={{
+              padding: tokens.spacing[3],
+              backgroundColor: tokens.colors.error[50],
+              border: `1px solid ${tokens.colors.error[600]}`,
+              borderRadius: tokens.borderRadius.base,
+              marginBottom: tokens.spacing[4]
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacing[2] }}>
+                <span className="notice-icon">⚠️</span>
+                <span style={{ color: tokens.colors.error[600], fontWeight: '500' }}>
+                  {webgpuError}
+                </span>
+              </div>
+              <div style={{ 
+                marginTop: tokens.spacing[2], 
+                display: 'flex', 
+                gap: tokens.spacing[2] 
+              }}>
+                {onRetryWebGPU && (
+                  <button
+                    onClick={onRetryWebGPU}
+                    style={{
+                      padding: `${tokens.spacing[2]} ${tokens.spacing[4]}`,
+                      backgroundColor: tokens.colors.primary[600],
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: tokens.borderRadius.base,
+                      fontSize: tokens.typography.fontSize.sm,
+                      cursor: 'pointer',
+                      minHeight: tokens.touchTarget.minimum,
+                      touchAction: 'manipulation'
+                    }}
+                  >
+                    🔄 Retry
+                  </button>
+                )}
+                {onEnterDemoMode && (
+                  <button
+                    onClick={onEnterDemoMode}
+                    style={{
+                      padding: `${tokens.spacing[2]} ${tokens.spacing[4]}`,
+                      backgroundColor: tokens.colors.success[600],
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: tokens.borderRadius.base,
+                      fontSize: tokens.typography.fontSize.sm,
+                      cursor: 'pointer',
+                      minHeight: tokens.touchTarget.minimum,
+                      touchAction: 'manipulation'
+                    }}
+                  >
+                    📖 Demo Mode
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+          {!webgpuSupported && !webgpuError && (
             <div className="webgpu-fallback-notice" role="alert">
               <span className="notice-icon">ℹ️</span>
               WebGPU not supported. You'll see demo responses instead.
@@ -184,7 +254,14 @@ export default function ModelPicker({
         </div>
       )}
       
-      <div className="model-grid">
+      <div 
+        className="model-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gap: tokens.mobile.grid.gap.md,
+        }}
+      >
         {showWebGPUModels ? (
           // WebGPU Models
           WEBGPU_MODELS.map((model) => {

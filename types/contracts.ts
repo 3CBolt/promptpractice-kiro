@@ -109,4 +109,8 @@ export interface EvaluationFeedback {
   exampleFix: string;
   /** Guide slug for additional learning */
   relatedGuide?: string;
+  /** List of specific improvement suggestions */
+  improvementSuggestions?: string[];
+  /** Positive aspects to reinforce */
+  positiveAspects?: string[];
 }

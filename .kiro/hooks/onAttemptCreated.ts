@@ -4,6 +4,7 @@ import { Attempt, Evaluation } from '../../types';
 import { readAttempt, writeEvaluation, writeEvaluationError, hasEvaluation, hasEvaluationError } from '../../lib/storage';
 import { idempotencyManager } from '../../lib/idempotency';
 import { AttemptStatus } from '../../types/contracts';
+import { recordAttempt } from '../../lib/progress';
 
 // Schema validation with path traversal guards
 function validateAttempt(data: any): data is Attempt {
@@ -232,6 +233,15 @@ export async function processAttemptFile(filePath: string): Promise<void> {
     };
 
     await writeEvaluation(evaluation);
+    
+    // Record attempt in progress tracking system
+    try {
+      recordAttempt(attempt, evaluation);
+      console.log(`[Hook] Recorded progress for ${attemptId}`);
+    } catch (progressError) {
+      console.warn(`[Hook] Failed to record progress for ${attemptId}:`, progressError);
+      // Don't fail the entire process if progress recording fails
+    }
     
     // Update idempotency status to success
     await idempotencyManager.updateStatus(attemptId, AttemptStatus.SUCCESS);

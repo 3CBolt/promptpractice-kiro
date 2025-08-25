@@ -69,9 +69,8 @@ describe('/api/attempts', () => {
       expect(response.status).toBe(403);
       expect(data.error).toContain('Bypass mode not enabled');
     });
-  });
-}); 
-   it('should process valid request successfully in bypass mode', async () => {
+
+    it('should process valid request successfully in bypass mode', async () => {
       process.env.KIRO_BYPASS_HOOK = 'true';
 
       const { AttemptRequestSchema, sanitizePrompt, validateModelSelection } = await import('@/lib/validation');

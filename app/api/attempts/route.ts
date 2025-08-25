@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeAttempt, createAttempt, writeEvaluation, createEvaluation, writeEvaluationError } from '@/lib/storage';
 import { CompareRequest, CompareResponse } from '@/app/api/compare/route';
 import { 
-  AttemptRequestSchema, 
+  validateAttemptRequest, 
   sanitizePrompt, 
   sanitizeSystemPrompt,
   validateModelSelection,
@@ -14,6 +14,7 @@ export interface CreateAttemptRequest {
   userPrompt: string;
   models: string[];
   systemPrompt?: string;
+  rubricVersion?: string;
 }
 
 export interface CreateAttemptResponse {
@@ -48,17 +49,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Parse request body
     const rawBody = await request.json();
     
-    // Validate with Zod schema
-    const validationResult = AttemptRequestSchema.safeParse(rawBody);
-    if (!validationResult.success) {
-      const errors = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+    // Validate request data
+    const validationResult = validateAttemptRequest(rawBody);
+    if (!validationResult.isValid) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: errors },
+        { error: 'Invalid request data', details: validationResult.errors },
         { status: 400 }
       );
     }
     
-    const body = validationResult.data;
+    const body = rawBody;
     
     // Additional model selection validation based on lab type
     const modelValidation = validateModelSelection(body.labId, body.models);
@@ -99,13 +99,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     try {
       // Step 1: Write attempt file
       await writeAttempt(attempt);
-      console.log(`[BYPASS] Created attempt ${attempt.id} for lab ${body.labId}`);
+      console.log(`[BYPASS] Created attempt ${attempt.attemptId} for lab ${body.labId}`);
       
       // Step 2: Process through compare API
       const compareRequest: CompareRequest = {
         userPrompt: sanitizedUserPrompt,
         systemPrompt: sanitizedSystemPrompt,
-        models: body.models
+        models: body.models,
+        rubricVersion: body.rubricVersion
       };
       
       // Make internal API call to /api/compare
@@ -126,13 +127,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const compareResult: CompareResponse = await compareResponse.json();
       
       // Step 3: Write evaluation file
-      const evaluation = createEvaluation(attempt.id, compareResult.results);
+      const evaluation = createEvaluation(attempt.attemptId, compareResult.results);
       await writeEvaluation(evaluation);
       
-      console.log(`[BYPASS] Completed evaluation for attempt ${attempt.id}`);
+      console.log(`[BYPASS] Completed evaluation for attempt ${attempt.attemptId}`);
       
       const response: CreateAttemptResponse = {
-        attemptId: attempt.id,
+        attemptId: attempt.attemptId,
         status: 'completed',
         evaluation
       };
@@ -140,13 +141,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(response);
       
     } catch (processingError) {
-      console.error(`[BYPASS] Error processing attempt ${attempt.id}:`, processingError);
+      console.error(`[BYPASS] Error processing attempt ${attempt.attemptId}:`, processingError);
       
       // Write error file
-      await writeEvaluationError(attempt.id, processingError);
+      await writeEvaluationError(attempt.attemptId, processingError);
       
       const response: CreateAttemptResponse = {
-        attemptId: attempt.id,
+        attemptId: attempt.attemptId,
         status: 'failed',
         error: {
           message: processingError instanceof Error ? processingError.message : 'Processing failed',
